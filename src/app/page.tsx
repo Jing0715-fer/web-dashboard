@@ -697,6 +697,31 @@ function LlmSettingsDialog({
 
   const isCustomProvider = provider !== 'zai';
 
+  // Smart defaults per provider
+  const getApiPlaceholder = () => {
+    if (provider === 'anthropic') return 'sk-ant-api03-...';
+    if (provider === 'openai') return 'sk-...';
+    return 'sk-...';
+  };
+
+  const getBaseUrlPlaceholder = () => {
+    if (provider === 'anthropic') return 'https://api.anthropic.com';
+    if (provider === 'openai') return 'https://api.openai.com';
+    return 'https://your-api.example.com';
+  };
+
+  const getModelPlaceholder = () => {
+    if (provider === 'anthropic') return 'claude-sonnet-4-20250514';
+    if (provider === 'openai') return 'gpt-4o-mini';
+    return 'model-name';
+  };
+
+  const getModelHint = () => {
+    if (provider === 'anthropic') return 'Examples: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-haiku-20240307';
+    if (provider === 'openai') return 'Examples: gpt-4o-mini, gpt-4o, gpt-4-turbo';
+    return 'The model to use for chat completions. Examples: deepseek-chat, qwen-turbo, glm-4';
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -724,6 +749,12 @@ function LlmSettingsDialog({
                     Built-in AI (Default)
                   </span>
                 </SelectItem>
+                <SelectItem value="anthropic">
+                  <span className="flex items-center gap-2">
+                    <Atom className="h-3.5 w-3.5" />
+                    Anthropic (Claude)
+                  </span>
+                </SelectItem>
                 <SelectItem value="openai">
                   <span className="flex items-center gap-2">
                     <Globe className="h-3.5 w-3.5" />
@@ -744,6 +775,12 @@ function LlmSettingsDialog({
                 Built-in AI service, no configuration needed. Works out of the box.
               </p>
             )}
+            {provider === 'anthropic' && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Atom className="h-3 w-3 text-violet-500 dark:text-violet-400" />
+                Use Claude models via the Anthropic Messages API. Requires an API key from console.anthropic.com.
+              </p>
+            )}
           </div>
 
           {/* API Key (only for custom providers) */}
@@ -754,7 +791,7 @@ function LlmSettingsDialog({
                 <Input
                   id="api-key"
                   type={showApiKey ? 'text' : 'password'}
-                  placeholder="sk-..."
+                  placeholder={getApiPlaceholder()}
                   value={apiKey}
                   onChange={(e) => { setApiKey(e.target.value); setTestResult(null); }}
                   className="pr-10"
@@ -768,6 +805,11 @@ function LlmSettingsDialog({
                   {showApiKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </Button>
               </div>
+              {provider === 'anthropic' && (
+                <p className="text-xs text-muted-foreground">
+                  Get your API key from <span className="font-mono text-xs">console.anthropic.com</span>
+                </p>
+              )}
             </div>
           )}
 
@@ -779,12 +821,14 @@ function LlmSettingsDialog({
               </Label>
               <Input
                 id="base-url"
-                placeholder={provider === 'openai' ? 'https://api.openai.com' : 'https://your-api.example.com'}
+                placeholder={getBaseUrlPlaceholder()}
                 value={baseUrl}
                 onChange={(e) => { setBaseUrl(e.target.value); setTestResult(null); }}
               />
               <p className="text-xs text-muted-foreground">
-                Leave empty for official API. For proxies or self-hosted, enter the base URL.
+                {provider === 'anthropic'
+                  ? 'Leave empty for official Anthropic API. For proxies (e.g. OpenRouter), enter the base URL.'
+                  : 'Leave empty for official API. For proxies or self-hosted, enter the base URL.'}
               </p>
             </div>
           )}
@@ -793,14 +837,69 @@ function LlmSettingsDialog({
           {isCustomProvider && (
             <div className="space-y-2">
               <Label htmlFor="model" className="text-sm font-medium">Model</Label>
-              <Input
-                id="model"
-                placeholder={provider === 'openai' ? 'gpt-4o-mini' : 'model-name'}
-                value={model}
-                onChange={(e) => { setModel(e.target.value); setTestResult(null); }}
-              />
+              {provider === 'anthropic' ? (
+                <Select value={model} onValueChange={(val) => { setModel(val); setTestResult(null); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a Claude model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="claude-sonnet-4-20250514">
+                      <span className="flex items-center gap-2">
+                        <Atom className="h-3 w-3" />
+                        Claude Sonnet 4 <span className="text-muted-foreground text-xs">(Recommended)</span>
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="claude-3-5-sonnet-20241022">
+                      <span className="flex items-center gap-2">
+                        <Atom className="h-3 w-3" />
+                        Claude 3.5 Sonnet
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="claude-3-5-haiku-20241022">
+                      <span className="flex items-center gap-2">
+                        <Zap className="h-3 w-3" />
+                        Claude 3.5 Haiku <span className="text-muted-foreground text-xs">(Fast)</span>
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="claude-3-opus-20240229">
+                      <span className="flex items-center gap-2">
+                        <Cpu className="h-3 w-3" />
+                        Claude 3 Opus <span className="text-muted-foreground text-xs">(Powerful)</span>
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="claude-3-haiku-20240307">
+                      <span className="flex items-center gap-2">
+                        <Zap className="h-3 w-3" />
+                        Claude 3 Haiku <span className="text-muted-foreground text-xs">(Fastest)</span>
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="__custom__">
+                      <span className="flex items-center gap-2">
+                        <Edit3 className="h-3 w-3" />
+                        Custom model name...
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="model"
+                  placeholder={getModelPlaceholder()}
+                  value={model}
+                  onChange={(e) => { setModel(e.target.value); setTestResult(null); }}
+                />
+              )}
+              {model === '__custom__' && provider === 'anthropic' && (
+                <Input
+                  placeholder="claude-custom-model-name"
+                  value={model === '__custom__' ? '' : model}
+                  onChange={(e) => { setModel(e.target.value); setTestResult(null); }}
+                  className="mt-2"
+                  autoFocus
+                />
+              )}
               <p className="text-xs text-muted-foreground">
-                The model to use for chat completions. Examples: gpt-4o-mini, gpt-4o, claude-3-haiku, deepseek-chat
+                {getModelHint()}
               </p>
             </div>
           )}
@@ -826,7 +925,7 @@ function LlmSettingsDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving || (isCustomProvider && !apiKey)} className="gap-2">
+            <Button onClick={handleSave} disabled={saving || (isCustomProvider && !apiKey) || (provider === 'anthropic' && model === '__custom__')} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Save
             </Button>
@@ -1148,7 +1247,7 @@ function AddProjectDialog({
     }
   };
 
-  const providerLabel = llmProvider === 'zai' ? 'Built-in AI' : llmProvider === 'openai' ? 'OpenAI' : 'Custom API';
+  const providerLabel = llmProvider === 'zai' ? 'Built-in AI' : llmProvider === 'anthropic' ? 'Anthropic (Claude)' : llmProvider === 'openai' ? 'OpenAI' : 'Custom API';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

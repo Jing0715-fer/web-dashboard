@@ -75,7 +75,7 @@ export async function PUT(req: NextRequest) {
 }
 
 // POST /api/llm-config - Test LLM connection
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const config = await db.llmConfig.findUnique({ where: { id: 'default' } });
 
@@ -108,12 +108,54 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'API key is required for custom providers' }, { status: 400 });
     }
 
-    // Test custom OpenAI-compatible API
+    if (provider === 'anthropic') {
+      // Test Anthropic API (Messages API format)
+      const testUrl = baseUrl
+        ? `${baseUrl.replace(/\/$/, '')}/v1/messages`
+        : 'https://api.anthropic.com/v1/messages';
+      const testModel = model || 'claude-sonnet-4-20250514';
+
+      const response = await fetch(testUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: testModel,
+          max_tokens: 10,
+          messages: [
+            { role: 'user', content: 'Say "OK" and nothing else.' },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return NextResponse.json({
+          success: false,
+          provider,
+          message: `Anthropic API returned ${response.status}: ${errorText.slice(0, 300)}`,
+        }, { status: 200 });
+      }
+
+      const data = await response.json();
+      const content = data.content?.[0]?.text;
+
+      return NextResponse.json({
+        success: true,
+        provider: 'anthropic',
+        message: `Connection successful. Model: ${testModel}. Response: ${content?.slice(0, 50)}`,
+      });
+    }
+
+    // Test custom OpenAI-compatible API (also handles provider === 'openai')
     const testUrl = baseUrl
       ? `${baseUrl.replace(/\/$/, '')}/v1/chat/completions`
       : 'https://api.openai.com/v1/chat/completions';
 
-    const testModel = model || 'gpt-3.5-turbo';
+    const testModel = model || 'gpt-4o-mini';
 
     const response = await fetch(testUrl, {
       method: 'POST',

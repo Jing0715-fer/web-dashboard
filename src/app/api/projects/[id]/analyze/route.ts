@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { readProjectDir, checkPortStatus } from '@/lib/process-manager';
 import ZAI from 'z-ai-web-dev-sdk';
 
+const SYSTEM_PROMPT = 'You are a DevOps expert that analyzes project structures and generates startup configurations. Always respond with valid JSON only. Ensure all port numbers are different between environments and all IP addresses are valid.';
+
 // POST /api/projects/[id]/analyze - LLM analyzes project directory
 export async function POST(
   _req: NextRequest,
@@ -98,14 +100,48 @@ CRITICAL Rules:
       const zai = await ZAI.create();
       const completion = await zai.chat.completions.create({
         messages: [
-          { role: 'assistant', content: 'You are a DevOps expert that analyzes project structures and generates startup configurations. Always respond with valid JSON only. Ensure all port numbers are different between environments and all IP addresses are valid.' },
+          { role: 'assistant', content: SYSTEM_PROMPT },
           { role: 'user', content: prompt },
         ],
         thinking: { type: 'disabled' },
       });
       response = completion.choices[0]?.message?.content || '';
+    } else if (provider === 'anthropic') {
+      // Use Anthropic Messages API
+      const apiUrl = llmConfig.baseUrl
+        ? `${llmConfig.baseUrl.replace(/\/$/, '')}/v1/messages`
+        : 'https://api.anthropic.com/v1/messages';
+      const model = llmConfig.model || 'claude-sonnet-4-20250514';
+
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': llmConfig.apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 4096,
+          system: SYSTEM_PROMPT,
+          messages: [
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.3,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        return NextResponse.json({
+          error: `Anthropic API error (${res.status}): ${errorText.slice(0, 300)}`,
+        }, { status: 500 });
+      }
+
+      const data = await res.json();
+      response = data.content?.[0]?.text || '';
     } else {
-      // Use custom OpenAI-compatible API
+      // Use custom OpenAI-compatible API (also handles provider === 'openai')
       const apiUrl = llmConfig.baseUrl
         ? `${llmConfig.baseUrl.replace(/\/$/, '')}/v1/chat/completions`
         : 'https://api.openai.com/v1/chat/completions';
@@ -120,7 +156,7 @@ CRITICAL Rules:
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: 'You are a DevOps expert that analyzes project structures and generates startup configurations. Always respond with valid JSON only. Ensure all port numbers are different between environments and all IP addresses are valid.' },
+            { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: prompt },
           ],
           temperature: 0.3,
