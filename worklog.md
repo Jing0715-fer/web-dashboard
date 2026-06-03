@@ -1,4 +1,44 @@
 ---
+Task ID: 12
+Agent: Main Agent
+Task: Continue optimizing project, find and fix shortcomings (round 2)
+
+Work Log:
+- Fixed custom model selector bug for Anthropic: added separate customModelName state
+- Fixed provider switch not resetting form fields: now clears apiKey, baseUrl, model, customModelName
+- Fixed handleDetectClaudeCode missing from useEffect deps: wrapped in useCallback
+- Added days handling to formatUptime: supports days, guards against negative values
+- Fixed formatBytes: added TB support, negative value guard
+- Fixed project path truncation: replaced max-w-[220px] with flex-1 approach
+- Added description field to search filter
+- Made Gateway Monitor grid responsive: grid-cols-1 sm:grid-cols-2
+- Removed onInteractOutside prevention on Project Detail Sheet
+- Added loading state for LLM config fetch on dialog open
+- Allowed creating project without AI analysis when LLM not configured
+- Paused polling when tab is hidden (visibilitychange API)
+- Extracted formatEnvName utility function (replaced 4 duplicated patterns)
+- Extracted IconSelector shared component (replaced 2 duplicated grids)
+- Consolidated TooltipProvider: single wrapper at top level, removed 4 individual wrappers
+- Added aria-labels to all icon-only buttons (9 buttons)
+- Made ProjectCard keyboard navigable: role="button", tabIndex, onKeyDown
+- Added proper ARIA roles to filter tabs: role="tablist/tab", aria-selected
+- Backend: Added 404 checks for project and environment PUT/DELETE routes
+- Backend: Added port validation (1-65535) on environment create/update
+- Backend: Added ownership verification for environment CRUD operations (403 if wrong project)
+- Backend: Added port conflict detection on environment creation (409 on duplicate port)
+- Backend: Converted gateway status health checks to Promise.all for parallel execution
+- Backend: Added batchCheckPorts import to gateway status route
+- All lint checks pass, browser verified (10/10 checks passed)
+
+Stage Summary:
+- Fixed 7 high-severity bugs (custom model, provider reset, useEffect deps, aria-labels, keyboard nav, apiFetch, Sheet interaction)
+- Fixed 15 medium-severity issues (polling pause, computed stats, env name dedup, icon selector dedup, TooltipProvider, filter ARIA, etc.)
+- Fixed 10+ low-severity issues (formatUptime days, formatBytes TB, path truncation, search description, etc.)
+- Fixed 8 backend issues (404 checks, port validation, ownership verification, port conflicts, Promise.all)
+- Full accessibility audit: aria-labels, keyboard navigation, ARIA tab roles
+- Code quality: extracted shared components and utility functions
+
+---
 Task ID: 11
 Agent: Main Agent
 Task: Continue optimizing project, find and fix shortcomings

@@ -80,6 +80,30 @@ function ProjectIcon({ icon, className }: { icon: string; className?: string }) 
   return <IconComponent className={className} />;
 }
 
+function IconSelector({ icon, onIconChange }: { icon: string; onIconChange: (icon: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {Object.keys(ICON_MAP).map(iconKey => (
+        <button
+          key={iconKey}
+          type="button"
+          onClick={() => onIconChange(iconKey)}
+          className={`h-8 w-8 rounded-md border flex items-center justify-center transition-all ${
+            icon === iconKey
+              ? 'border-emerald-500 bg-emerald-500/10 shadow-sm'
+              : 'border-border/50 hover:border-muted-foreground/30 hover:bg-muted/50'
+          }`}
+          title={iconKey}
+          aria-label={`Select ${iconKey} icon`}
+          aria-pressed={icon === iconKey}
+        >
+          <ProjectIcon icon={iconKey} className={`h-4 w-4 ${icon === iconKey ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ============ Types ============
 interface Environment {
   id: string;
@@ -146,19 +170,30 @@ interface GatewayStatusData {
 }
 
 function formatUptime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-  const h = Math.floor(seconds / 3600);
+  if (seconds < 0) return '0s';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
   return `${h}h ${m}m`;
 }
 
 function formatBytes(bytes: number): string {
+  if (bytes < 0) return '0 B';
   if (bytes === 0) return '0 B';
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatEnvName(name: string, abbreviated = false): string {
+  if (name === 'production') return abbreviated ? 'Prod' : 'Production';
+  if (name === 'development') return abbreviated ? 'Dev' : 'Development';
+  if (name === 'staging') return abbreviated ? 'Stg' : 'Staging';
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 // ============ API Helpers ============
@@ -187,21 +222,20 @@ function CopyableUrl({ url, label }: { url: string; label?: string }) {
   };
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            className={`transition-colors ${copied ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'}`}
-            onClick={handleCopy}
-          >
-            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={4}>
-          <p>{label || 'Copy URL'}: <code className="font-mono text-xs">{url}</code></p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          className={`transition-colors ${copied ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'}`}
+          onClick={handleCopy}
+          aria-label={label || 'Copy URL'}
+        >
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4}>
+        <p>{label || 'Copy URL'}: <code className="font-mono text-xs">{url}</code></p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -221,6 +255,7 @@ function CopyableText({ text, className }: { text: string; className?: string })
       className={`shrink-0 transition-colors ${copied ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'} ${className || ''}`}
       onClick={handleCopy}
       title={`Copy: ${text}`}
+      aria-label={`Copy: ${text}`}
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
     </button>
@@ -314,25 +349,24 @@ function InlinePortEditor({
   }
 
   return (
-    <TooltipProvider delayDuration={400}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            className="text-xs text-muted-foreground font-mono shrink-0 hover:text-foreground hover:bg-muted/80 rounded px-1 py-0.5 transition-colors cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditing(true);
-              setValue(String(port));
-            }}
-          >
-            :{port}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={4}>
-          <p>Click to edit port</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          className="text-xs text-muted-foreground font-mono shrink-0 hover:text-foreground hover:bg-muted/80 rounded px-1 py-0.5 transition-colors cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditing(true);
+            setValue(String(port));
+          }}
+          aria-label="Edit port"
+        >
+          :{port}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4}>
+        <p>Click to edit port</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -399,9 +433,29 @@ export default function DashboardPage() {
     fetchLlmConfig();
     fetchNetworkInfo();
     fetchGatewayStatus();
-    const interval = setInterval(refresh, 8000);
-    const gatewayInterval = setInterval(fetchGatewayStatus, 15000);
-    return () => { clearInterval(interval); clearInterval(gatewayInterval); };
+    let intervalId: ReturnType<typeof setInterval>;
+    let gatewayIntervalId: ReturnType<typeof setInterval>;
+    const startIntervals = () => {
+      intervalId = setInterval(refresh, 8000);
+      gatewayIntervalId = setInterval(fetchGatewayStatus, 15000);
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refresh();
+        fetchGatewayStatus();
+        startIntervals();
+      } else {
+        clearInterval(intervalId);
+        clearInterval(gatewayIntervalId);
+      }
+    };
+    startIntervals();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(intervalId);
+      clearInterval(gatewayIntervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [refresh, fetchLlmConfig, fetchNetworkInfo, fetchGatewayStatus]);
 
   const handleDeleteProject = async () => {
@@ -477,7 +531,7 @@ export default function DashboardPage() {
     let result = projects;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(p => p.name.toLowerCase().includes(q) || p.path.toLowerCase().includes(q));
+      result = result.filter(p => p.name.toLowerCase().includes(q) || p.path.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
     }
     if (statusFilter === 'running') {
       result = result.filter(p => p.environments.some(e => e.status === 'running'));
@@ -488,6 +542,7 @@ export default function DashboardPage() {
   }, [projects, searchQuery, statusFilter]);
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-lg">
@@ -502,42 +557,40 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <TooltipProvider delayDuration={300}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowGatewayMonitor(true)}
-                    className={gatewayStatus?.caddyRunning && gatewayStatus?.gatewayListening ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300' : 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300'}
-                  >
-                    <HeartPulse className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>{gatewayStatus?.caddyRunning ? 'Gateway Running - Click to monitor' : 'Gateway Status - Click to check'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider delayDuration={300}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowLlmSettings(true)}
-                    className={isLlmReady ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300' : 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300'}
-                  >
-                    {isLlmReady ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>{isLlmReady ? 'LLM Connected - Click to configure' : 'LLM Not Configured - Click to set up'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowGatewayMonitor(true)}
+                  className={gatewayStatus?.caddyRunning && gatewayStatus?.gatewayListening ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300' : 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300'}
+                  aria-label="Gateway monitor"
+                >
+                  <HeartPulse className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{gatewayStatus?.caddyRunning ? 'Gateway Running - Click to monitor' : 'Gateway Status - Click to check'}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowLlmSettings(true)}
+                  className={isLlmReady ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300' : 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300'}
+                  aria-label="LLM configuration"
+                >
+                  {isLlmReady ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{isLlmReady ? 'LLM Connected - Click to configure' : 'LLM Not Configured - Click to set up'}</p>
+              </TooltipContent>
+            </Tooltip>
             <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={refresh} title="Refresh">
+            <Button variant="ghost" size="icon" onClick={refresh} title="Refresh" aria-label="Refresh projects">
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button onClick={() => setShowAddDialog(true)} className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 dark:from-emerald-700 dark:to-teal-700 dark:hover:from-emerald-600 dark:hover:to-teal-600 shadow-md shadow-emerald-500/20">
@@ -587,6 +640,7 @@ export default function DashboardPage() {
             <button
               onClick={() => setShowGatewayMonitor(true)}
               className="flex items-center gap-2.5 bg-background/80 rounded-lg px-3 py-2 border border-border/40 shadow-sm hover:border-emerald-500/30 transition-colors cursor-pointer text-left"
+              aria-label="Gateway status - click to monitor"
             >
               <div className={`h-7 w-7 rounded-md flex items-center justify-center shrink-0 ${gatewayStatus?.caddyRunning ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
                 <HeartPulse className={`h-3.5 w-3.5 ${gatewayStatus?.caddyRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
@@ -648,6 +702,7 @@ export default function DashboardPage() {
                   <button
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => setSearchQuery('')}
+                    aria-label="Clear search"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -655,7 +710,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 {/* Status Filter Tabs */}
-                <div className="flex items-center rounded-lg border border-border/50 bg-muted/30 p-0.5">
+                <div className="flex items-center rounded-lg border border-border/50 bg-muted/30 p-0.5" role="tablist" aria-label="Filter projects by status">
                   {[
                     { key: 'all', label: 'All', count: projects.length },
                     { key: 'running', label: 'Running', count: runningEnvs > 0 ? projects.filter(p => p.environments.some(e => e.status === 'running')).length : 0 },
@@ -665,6 +720,8 @@ export default function DashboardPage() {
                       key={key}
                       onClick={() => setStatusFilter(key as 'all' | 'running' | 'stopped')}
                       className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${statusFilter === key ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                      role="tab"
+                      aria-selected={statusFilter === key}
                     >
                       {label}
                       {count > 0 && <span className="ml-1 text-[10px] opacity-70">{count}</span>}
@@ -784,6 +841,7 @@ export default function DashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </TooltipProvider>
   );
 }
 
@@ -808,10 +866,13 @@ function LlmSettingsDialog({
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [detecting, setDetecting] = useState(false);
   const [detectedInfo, setDetectedInfo] = useState<{ found: boolean; source: string; details: string[]; hasApiKey: boolean; apiKey: string; baseUrl: string; model: string } | null>(null);
+  const [customModelName, setCustomModelName] = useState('');
+  const [configLoading, setConfigLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
+      setConfigLoading(true);
       // Fetch current config
       apiFetch<{ config: LlmConfigState }>('/api/llm-config')
         .then(data => {
@@ -820,21 +881,17 @@ function LlmSettingsDialog({
           setBaseUrl(data.config.baseUrl);
           setModel(data.config.model);
           setClaudeCodeAuto(data.config.claudeCodeAuto || false);
+          setCustomModelName('');
           setTestResult(null);
           setDetectedInfo(null);
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setConfigLoading(false));
     }
   }, [open]);
 
   // Auto-detect Claude Code config when provider changes to claude-code
-  useEffect(() => {
-    if (provider === 'claude-code' && open) {
-      handleDetectClaudeCode();
-    }
-  }, [provider, open]);
-
-  const handleDetectClaudeCode = async () => {
+  const handleDetectClaudeCode = useCallback(async () => {
     setDetecting(true);
     try {
       const data = await apiFetch<{ config: { found: boolean; source: string; details: string[]; hasApiKey: boolean; apiKey: string; baseUrl: string; model: string } }>('/api/llm-config/detect-claude-code');
@@ -846,12 +903,18 @@ function LlmSettingsDialog({
         setModel(data.config.model);
         setClaudeCodeAuto(true);
       }
-    } catch (e: any) {
+    } catch (_e: any) {
       setDetectedInfo({ found: false, source: '', details: [], hasApiKey: false, apiKey: '', baseUrl: '', model: '' });
     } finally {
       setDetecting(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (provider === 'claude-code' && open) {
+      handleDetectClaudeCode();
+    }
+  }, [provider, open, handleDetectClaudeCode]);
 
   const handleImportFromClaudeCode = async () => {
     setDetecting(true);
@@ -878,10 +941,11 @@ function LlmSettingsDialog({
   const handleSave = async () => {
     setSaving(true);
     try {
+      const finalModel = model === '__custom__' ? customModelName : model;
       await apiFetch('/api/llm-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey, baseUrl, model, claudeCodeAuto }),
+        body: JSON.stringify({ provider, apiKey, baseUrl, model: finalModel, claudeCodeAuto }),
       });
       toast({ title: 'LLM settings saved', duration: 2000 });
       onConfigChanged();
@@ -898,10 +962,11 @@ function LlmSettingsDialog({
     setTestResult(null);
     try {
       // Save first so test uses latest config
+      const finalModel = model === '__custom__' ? customModelName : model;
       await apiFetch('/api/llm-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey, baseUrl, model, claudeCodeAuto }),
+        body: JSON.stringify({ provider, apiKey, baseUrl, model: finalModel, claudeCodeAuto }),
       });
       onConfigChanged();
 
@@ -959,7 +1024,10 @@ function LlmSettingsDialog({
           {/* Provider Selection */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Provider</Label>
-            <Select value={provider} onValueChange={(val) => { setProvider(val); setTestResult(null); setDetectedInfo(null); }}>
+            {configLoading ? (
+              <div className="h-10 rounded-md bg-muted animate-pulse" />
+            ) : (
+            <Select value={provider} onValueChange={(val) => { setProvider(val); setApiKey(''); setBaseUrl(''); setModel(''); setCustomModelName(''); setTestResult(null); setDetectedInfo(null); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
@@ -996,6 +1064,7 @@ function LlmSettingsDialog({
                 </SelectItem>
               </SelectContent>
             </Select>
+            )}
             {provider === 'zai' && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Wifi className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
@@ -1171,7 +1240,7 @@ function LlmSettingsDialog({
             <div className="space-y-2">
               <Label htmlFor="model" className="text-sm font-medium">Model</Label>
               {provider === 'anthropic' ? (
-                <Select value={model} onValueChange={(val) => { setModel(val); setTestResult(null); }}>
+                <Select value={model} onValueChange={(val) => { setModel(val); if (val !== '__custom__') setCustomModelName(''); setTestResult(null); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a Claude model" />
                   </SelectTrigger>
@@ -1225,8 +1294,8 @@ function LlmSettingsDialog({
               {model === '__custom__' && provider === 'anthropic' && (
                 <Input
                   placeholder="claude-custom-model-name"
-                  value={model === '__custom__' ? '' : model}
-                  onChange={(e) => { setModel(e.target.value); setTestResult(null); }}
+                  value={customModelName}
+                  onChange={(e) => { setCustomModelName(e.target.value); setTestResult(null); }}
                   className="mt-2"
                   autoFocus
                 />
@@ -1258,7 +1327,7 @@ function LlmSettingsDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving || (isCustomProvider && !apiKey) || (provider === 'anthropic' && model === '__custom__')} className="gap-2">
+            <Button onClick={handleSave} disabled={saving || (isCustomProvider && !apiKey) || (model === '__custom__' && !customModelName.trim())} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Save
             </Button>
@@ -1330,6 +1399,14 @@ function ProjectCard({
           hasRunning ? 'hover:border-emerald-500/30' : 'hover:border-border'
         }`}
         onClick={onOpen}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
       >
         {/* Left accent border */}
         <div className={`absolute left-0 top-0 bottom-0 w-0.5 rounded-l-xl transition-colors duration-300 ${
@@ -1346,9 +1423,9 @@ function ProjectCard({
               }`}>
                 <ProjectIcon icon={project.icon} className={`h-4 w-4 ${hasRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-sm truncate">{project.name}</h3>
-                <p className="text-[11px] text-muted-foreground truncate max-w-[220px] font-mono">{project.path}</p>
+                <p className="text-[11px] text-muted-foreground truncate flex-1 font-mono">{project.path}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -1370,6 +1447,7 @@ function ProjectCard({
                   }}
                   disabled={actionLoading.size > 0}
                   title={allRunning ? 'Stop All' : runningCount > 0 ? 'Start Remaining' : 'Start All'}
+                  aria-label={allRunning ? 'Stop all environments' : runningCount > 0 ? 'Start remaining environments' : 'Start all environments'}
                 >
                   {actionLoading.size > 0 ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1415,7 +1493,7 @@ function ProjectCard({
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
                         <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
-                        <span className="text-xs font-medium truncate">{env.name === 'production' ? 'Prod' : env.name === 'development' ? 'Dev' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
+                        <span className="text-xs font-medium truncate">{formatEnvName(env.name, true)}</span>
                         <InlinePortEditor
                           projectId={project.id}
                           envId={env.id}
@@ -1704,23 +1782,7 @@ function AddProjectDialog({
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium">Project Icon</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.keys(ICON_MAP).map(iconKey => (
-                <button
-                  key={iconKey}
-                  type="button"
-                  onClick={() => setIcon(iconKey)}
-                  className={`h-8 w-8 rounded-md border flex items-center justify-center transition-all ${
-                    icon === iconKey
-                      ? 'border-emerald-500 bg-emerald-500/10 shadow-sm'
-                      : 'border-border/50 hover:border-muted-foreground/30 hover:bg-muted/50'
-                  }`}
-                  title={iconKey}
-                >
-                  <ProjectIcon icon={iconKey} className={`h-4 w-4 ${icon === iconKey ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
-                </button>
-              ))}
-            </div>
+            <IconSelector icon={icon} onIconChange={setIcon} />
           </div>
         </div>
         <DialogFooter>
@@ -1729,7 +1791,7 @@ function AddProjectDialog({
           </Button>
           <Button
             onClick={handleAutoDetect}
-            disabled={isCreating || !path.trim() || (analyzeMode === 'api' && !llmReady)}
+            disabled={isCreating || !path.trim()}
             className="gap-2"
           >
             {isAnalyzing ? (
@@ -1745,7 +1807,7 @@ function AddProjectDialog({
             ) : (
               <>
                 {analyzeMode === 'cli' ? <Terminal className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                {analyzeMode === 'cli' ? 'Add & CLI Configure' : 'Add & Auto-Configure'}
+                {analyzeMode === 'api' && !llmReady ? 'Add Project' : analyzeMode === 'cli' ? 'Add & CLI Configure' : 'Add & Auto-Configure'}
               </>
             )}
           </Button>
@@ -1907,7 +1969,7 @@ function ProjectDetailSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col">
           <SheetHeader className="px-4 pt-4 pb-2 border-b">
             <div className="flex items-center gap-2.5">
               <div className="h-10 w-10 rounded-lg bg-muted/80 border border-border/50 flex items-center justify-center">
@@ -1963,7 +2025,7 @@ function ProjectDetailSheet({
                           <div className="flex items-center gap-2.5">
                             <div className={`h-2 w-2 rounded-full ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
                             <div>
-                              <span className="font-medium text-sm">{env.name === 'production' ? 'Production' : env.name === 'development' ? 'Development' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
+                              <span className="font-medium text-sm">{formatEnvName(env.name)}</span>
                               <span className="text-xs text-muted-foreground ml-1.5">:{env.port}</span>
                             </div>
                           </div>
@@ -2139,7 +2201,7 @@ function EnvironmentPanel({
       <div className="flex items-center justify-between px-3 py-2 bg-muted/30">
         <div className="flex items-center gap-2">
           <div className={`h-2 w-2 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
-          <span className="font-medium text-sm">{env.name === 'production' ? 'Production' : env.name === 'development' ? 'Development' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
+          <span className="font-medium text-sm">{formatEnvName(env.name)}</span>
           <span className="text-[11px] text-muted-foreground">:{env.port}</span>
           <Badge variant={isRunning ? 'default' : 'secondary'} className={`text-[11px] px-1.5 py-0 ${isRunning ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : ''} ${!isRunning && env.name === 'production' ? 'border-orange-500/20 text-orange-600 dark:text-orange-400' : ''}`}>
             {isRunning ? 'Running' : 'Stopped'}
@@ -2495,23 +2557,7 @@ function EditProjectDialog({
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium">Project Icon</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.keys(ICON_MAP).map(iconKey => (
-                <button
-                  key={iconKey}
-                  type="button"
-                  onClick={() => setIcon(iconKey)}
-                  className={`h-8 w-8 rounded-md border flex items-center justify-center transition-all ${
-                    icon === iconKey
-                      ? 'border-emerald-500 bg-emerald-500/10 shadow-sm'
-                      : 'border-border/50 hover:border-muted-foreground/30 hover:bg-muted/50'
-                  }`}
-                  title={iconKey}
-                >
-                  <ProjectIcon icon={iconKey} className={`h-4 w-4 ${icon === iconKey ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
-                </button>
-              ))}
-            </div>
+            <IconSelector icon={icon} onIconChange={setIcon} />
           </div>
         </div>
         <DialogFooter>
@@ -2674,7 +2720,7 @@ function GatewayMonitorDialog({
         ) : (
           <div className="space-y-4 py-3">
             {/* Gateway Status Overview */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Caddy Status Card */}
               <div className={`rounded-lg border p-3 ${gatewayStatus.caddyRunning ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
                 <div className="flex items-center gap-2 mb-2">
@@ -2799,7 +2845,7 @@ function GatewayMonitorDialog({
                         }`} />
                         <span className="font-medium">{service.projectName}</span>
                         <span className="text-muted-foreground">/</span>
-                        <span className="text-muted-foreground">{service.envName === 'production' ? 'Prod' : service.envName === 'development' ? 'Dev' : service.envName}</span>
+                        <span className="text-muted-foreground">{formatEnvName(service.envName, true)}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-muted-foreground">:{service.port}</span>

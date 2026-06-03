@@ -24,6 +24,11 @@ export async function POST(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    const portNum = parseInt(String(port), 10);
+    if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+      return NextResponse.json({ error: 'Port must be between 1 and 65535' }, { status: 400 });
+    }
+
     // Check for duplicate environment name
     const existing = await db.environment.findFirst({
       where: { projectId: id, name },
@@ -35,12 +40,20 @@ export async function POST(
       );
     }
 
+    // Check for port conflicts across all environments
+    const conflictingEnv = await db.environment.findFirst({
+      where: { port: portNum, NOT: { id: undefined } },
+    });
+    if (conflictingEnv) {
+      return NextResponse.json({ error: `Port ${portNum} is already in use by another environment` }, { status: 409 });
+    }
+
     const environment = await db.environment.create({
       data: {
         projectId: id,
         name,
         cmd,
-        port: parseInt(String(port), 10),
+        port: portNum,
         envVars: JSON.stringify(envVars || {}),
       },
     });

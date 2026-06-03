@@ -46,6 +46,11 @@ export async function PUT(
     const body = await req.json();
     const { name, description, icon } = body;
 
+    const existing = await db.project.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
     const project = await db.project.update({
       where: { id },
       data: {

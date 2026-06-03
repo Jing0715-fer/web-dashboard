@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import * as os from 'os';
 import * as fs from 'fs';
 import { db } from '@/lib/db';
+import { batchCheckPorts } from '@/lib/process-manager';
 
 const execp = promisify(exec);
 
@@ -143,32 +144,38 @@ export async function GET() {
     });
 
     // Check health for each environment
-    const services: ServiceHealth[] = [];
-    for (const project of projects) {
-      for (const env of project.environments) {
-        const isRunning = await isPortListening(env.port);
+    const allPorts = projects.flatMap(p => p.environments.map(e => e.port));
+    const activePorts = await batchCheckPorts(allPorts);
+
+    const serviceHealthChecks = projects.flatMap(project =>
+      project.environments.map(async (env) => {
+        const isRunning = activePorts.has(env.port);
         let httpStatus: number | null = null;
         let responseTime: number | null = null;
+        let gatewayAccessible = false;
 
         if (isRunning) {
           const health = await checkHttpHealth(env.port);
           httpStatus = health.status;
           responseTime = health.responseTime;
+          gatewayAccessible = health.status !== null;
         }
 
-        services.push({
+        return {
           projectId: project.id,
           projectName: project.name,
           envId: env.id,
           envName: env.name,
           port: env.port,
-          status: isRunning ? 'running' : 'stopped',
+          status: isRunning ? 'running' as const : 'stopped' as const,
           httpStatus,
           responseTime,
-          gatewayAccessible: isRunning && httpStatus !== null,
-        });
-      }
-    }
+          gatewayAccessible,
+        };
+      })
+    );
+
+    const services = await Promise.all(serviceHealthChecks);
 
     const status: GatewayStatus = {
       caddyRunning,
