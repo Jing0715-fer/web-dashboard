@@ -1,4 +1,23 @@
 ---
+Task ID: 7
+Agent: Main Agent
+Task: Add Claude Code CLI config auto-detection and Anthropic-compatible LLM support
+
+Work Log:
+- Added claudeCodeAuto boolean field to LlmConfig Prisma model (default: false)
+- Created /api/llm-config/detect-claude-code/route.ts endpoint that scans env vars and config files
+- Updated /api/llm-config/route.ts with claude-code provider support and auto-refresh
+- Updated /api/projects/[id]/analyze/route.ts to support claude-code provider
+- Updated LlmSettingsDialog with Claude Code (Auto-detect) provider option and Import button
+- Updated LlmConfigState interface, isLlmReady logic, and AddProjectDialog provider label
+
+Stage Summary:
+- New "Claude Code (Auto-detect)" provider option reads CLI config automatically
+- Auto-detects from ANTHROPIC_API_KEY env var and multiple config file locations
+- "Import from Claude Code" button on other providers for auto-filling settings
+- Anthropic-compatible API support fully integrated in test and analyze routes
+
+---
 Task ID: 1
 Agent: Main Agent
 Task: Build comprehensive Web Dashboard from GitHub project redesign

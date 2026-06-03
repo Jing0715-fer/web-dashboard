@@ -108,6 +108,7 @@ interface LlmConfigState {
   baseUrl: string;
   model: string;
   hasApiKey: boolean;
+  claudeCodeAuto?: boolean;
 }
 
 interface NetworkInfo {
@@ -399,7 +400,7 @@ export default function DashboardPage() {
   );
   const totalEnvs = projects.reduce((acc, p) => acc + p.environments.length, 0);
 
-  const isLlmReady = llmConfig?.provider === 'zai' || llmConfig?.hasApiKey;
+  const isLlmReady = llmConfig?.provider === 'zai' || llmConfig?.provider === 'claude-code' || llmConfig?.hasApiKey;
 
   const filteredProjects = projects.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.path.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -633,10 +634,13 @@ function LlmSettingsDialog({
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [model, setModel] = useState('');
+  const [claudeCodeAuto, setClaudeCodeAuto] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectedInfo, setDetectedInfo] = useState<{ found: boolean; source: string; details: string[]; hasApiKey: boolean; apiKey: string; baseUrl: string; model: string } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -648,11 +652,61 @@ function LlmSettingsDialog({
           setApiKey(data.config.apiKey); // masked
           setBaseUrl(data.config.baseUrl);
           setModel(data.config.model);
+          setClaudeCodeAuto(data.config.claudeCodeAuto || false);
           setTestResult(null);
+          setDetectedInfo(null);
         })
         .catch(() => {});
     }
   }, [open]);
+
+  // Auto-detect Claude Code config when provider changes to claude-code
+  useEffect(() => {
+    if (provider === 'claude-code' && open) {
+      handleDetectClaudeCode();
+    }
+  }, [provider, open]);
+
+  const handleDetectClaudeCode = async () => {
+    setDetecting(true);
+    try {
+      const data = await apiFetch<{ config: { found: boolean; source: string; details: string[]; hasApiKey: boolean; apiKey: string; baseUrl: string; model: string } }>('/api/llm-config/detect-claude-code');
+      setDetectedInfo(data.config);
+      if (data.config.found) {
+        // Auto-fill detected values (API key is masked from server)
+        setApiKey(data.config.apiKey);
+        setBaseUrl(data.config.baseUrl);
+        setModel(data.config.model);
+        setClaudeCodeAuto(true);
+      }
+    } catch (e: any) {
+      setDetectedInfo({ found: false, source: '', details: [], hasApiKey: false, apiKey: '', baseUrl: '', model: '' });
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  const handleImportFromClaudeCode = async () => {
+    setDetecting(true);
+    try {
+      const data = await apiFetch<{ config: { found: boolean; source: string; details: string[]; hasApiKey: boolean; apiKey: string; baseUrl: string; model: string } }>('/api/llm-config/detect-claude-code');
+      setDetectedInfo(data.config);
+      if (data.config.found) {
+        setProvider('anthropic');
+        setApiKey(data.config.apiKey);
+        setBaseUrl(data.config.baseUrl);
+        setModel(data.config.model);
+        setClaudeCodeAuto(false);
+        toast({ title: 'Configuration imported from Claude Code', duration: 2000 });
+      } else {
+        toast({ title: 'No Claude Code configuration found', description: 'Set ANTHROPIC_API_KEY or configure Claude Code CLI first.', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Detection failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setDetecting(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -660,7 +714,7 @@ function LlmSettingsDialog({
       await apiFetch('/api/llm-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey, baseUrl, model }),
+        body: JSON.stringify({ provider, apiKey, baseUrl, model, claudeCodeAuto }),
       });
       toast({ title: 'LLM settings saved', duration: 2000 });
       onConfigChanged();
@@ -680,7 +734,7 @@ function LlmSettingsDialog({
       await apiFetch('/api/llm-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey, baseUrl, model }),
+        body: JSON.stringify({ provider, apiKey, baseUrl, model, claudeCodeAuto }),
       });
       onConfigChanged();
 
@@ -695,36 +749,36 @@ function LlmSettingsDialog({
     }
   };
 
-  const isCustomProvider = provider !== 'zai';
+  const isCustomProvider = provider !== 'zai' && provider !== 'claude-code';
 
   // Smart defaults per provider
   const getApiPlaceholder = () => {
-    if (provider === 'anthropic') return 'sk-ant-api03-...';
+    if (provider === 'anthropic' || provider === 'claude-code') return 'sk-ant-api03-...';
     if (provider === 'openai') return 'sk-...';
     return 'sk-...';
   };
 
   const getBaseUrlPlaceholder = () => {
-    if (provider === 'anthropic') return 'https://api.anthropic.com';
+    if (provider === 'anthropic' || provider === 'claude-code') return 'https://api.anthropic.com';
     if (provider === 'openai') return 'https://api.openai.com';
     return 'https://your-api.example.com';
   };
 
   const getModelPlaceholder = () => {
-    if (provider === 'anthropic') return 'claude-sonnet-4-20250514';
+    if (provider === 'anthropic' || provider === 'claude-code') return 'claude-sonnet-4-20250514';
     if (provider === 'openai') return 'gpt-4o-mini';
     return 'model-name';
   };
 
   const getModelHint = () => {
-    if (provider === 'anthropic') return 'Examples: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-haiku-20240307';
+    if (provider === 'anthropic' || provider === 'claude-code') return 'Examples: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-haiku-20240307';
     if (provider === 'openai') return 'Examples: gpt-4o-mini, gpt-4o, gpt-4-turbo';
     return 'The model to use for chat completions. Examples: deepseek-chat, qwen-turbo, glm-4';
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
@@ -738,7 +792,7 @@ function LlmSettingsDialog({
           {/* Provider Selection */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Provider</Label>
-            <Select value={provider} onValueChange={(val) => { setProvider(val); setTestResult(null); }}>
+            <Select value={provider} onValueChange={(val) => { setProvider(val); setTestResult(null); setDetectedInfo(null); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
@@ -747,6 +801,12 @@ function LlmSettingsDialog({
                   <span className="flex items-center gap-2">
                     <Zap className="h-3.5 w-3.5" />
                     Built-in AI (Default)
+                  </span>
+                </SelectItem>
+                <SelectItem value="claude-code">
+                  <span className="flex items-center gap-2">
+                    <Atom className="h-3.5 w-3.5" />
+                    Claude Code (Auto-detect)
                   </span>
                 </SelectItem>
                 <SelectItem value="anthropic">
@@ -775,6 +835,12 @@ function LlmSettingsDialog({
                 Built-in AI service, no configuration needed. Works out of the box.
               </p>
             )}
+            {provider === 'claude-code' && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Atom className="h-3 w-3 text-violet-500 dark:text-violet-400" />
+                Auto-detect configuration from Claude Code CLI. Reads ANTHROPIC_API_KEY env var and config files.
+              </p>
+            )}
             {provider === 'anthropic' && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Atom className="h-3 w-3 text-violet-500 dark:text-violet-400" />
@@ -782,6 +848,76 @@ function LlmSettingsDialog({
               </p>
             )}
           </div>
+
+          {/* Claude Code Auto-detect Info */}
+          {provider === 'claude-code' && (
+            <div className="space-y-3">
+              {detecting ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Detecting Claude Code configuration...
+                </div>
+              ) : detectedInfo ? (
+                <div className={`rounded-lg p-3 text-sm ${
+                  detectedInfo.found
+                    ? 'bg-violet-500/10 border border-violet-500/20 dark:bg-violet-500/15'
+                    : 'bg-amber-500/10 border border-amber-500/20 dark:bg-amber-500/15'
+                }`}>
+                  <div className="flex items-center gap-2 mb-1.5 font-medium">
+                    {detectedInfo.found ? (
+                      <Check className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    )}
+                    {detectedInfo.found
+                      ? `Configuration detected (Source: ${detectedInfo.source})`
+                      : 'No Claude Code configuration found'}
+                  </div>
+                  {detectedInfo.found && detectedInfo.details.length > 0 && (
+                    <ul className="text-xs text-muted-foreground space-y-0.5 ml-6">
+                      {detectedInfo.details.map((d, i) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {!detectedInfo.found && (
+                    <p className="text-xs text-muted-foreground ml-6">
+                      Set <code className="font-mono bg-muted px-1 py-0.5 rounded">ANTHROPIC_API_KEY</code> environment variable or configure Claude Code CLI.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Re-detect button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDetectClaudeCode}
+                disabled={detecting}
+                className="gap-1.5"
+              >
+                {detecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                Re-detect Configuration
+              </Button>
+            </div>
+          )}
+
+          {/* Import from Claude Code button (for anthropic/custom/openai providers) */}
+          {(provider === 'anthropic' || provider === 'openai' || provider === 'custom') && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImportFromClaudeCode}
+                disabled={detecting}
+                className="gap-1.5 text-xs"
+              >
+                {detecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Atom className="h-3.5 w-3.5" />}
+                Import from Claude Code
+              </Button>
+              <span className="text-xs text-muted-foreground">Auto-fill from Claude Code CLI config</span>
+            </div>
+          )}
 
           {/* API Key (only for custom providers) */}
           {isCustomProvider && (
@@ -833,11 +969,11 @@ function LlmSettingsDialog({
             </div>
           )}
 
-          {/* Model (only for custom providers) */}
-          {isCustomProvider && (
+          {/* Model (only for custom providers and claude-code) */}
+          {(isCustomProvider || provider === 'claude-code') && (
             <div className="space-y-2">
               <Label htmlFor="model" className="text-sm font-medium">Model</Label>
-              {provider === 'anthropic' ? (
+              {(provider === 'anthropic' || provider === 'claude-code') ? (
                 <Select value={model} onValueChange={(val) => { setModel(val); setTestResult(null); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a Claude model" />
@@ -889,7 +1025,7 @@ function LlmSettingsDialog({
                   onChange={(e) => { setModel(e.target.value); setTestResult(null); }}
                 />
               )}
-              {model === '__custom__' && provider === 'anthropic' && (
+              {model === '__custom__' && (provider === 'anthropic' || provider === 'claude-code') && (
                 <Input
                   placeholder="claude-custom-model-name"
                   value={model === '__custom__' ? '' : model}
@@ -925,7 +1061,7 @@ function LlmSettingsDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving || (isCustomProvider && !apiKey) || (provider === 'anthropic' && model === '__custom__')} className="gap-2">
+            <Button onClick={handleSave} disabled={saving || (isCustomProvider && !apiKey) || ((provider === 'anthropic' || provider === 'claude-code') && model === '__custom__')} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Save
             </Button>
@@ -1247,7 +1383,7 @@ function AddProjectDialog({
     }
   };
 
-  const providerLabel = llmProvider === 'zai' ? 'Built-in AI' : llmProvider === 'anthropic' ? 'Anthropic (Claude)' : llmProvider === 'openai' ? 'OpenAI' : 'Custom API';
+  const providerLabel = llmProvider === 'zai' ? 'Built-in AI' : llmProvider === 'claude-code' ? 'Claude Code (Auto-detect)' : llmProvider === 'anthropic' ? 'Anthropic (Claude)' : llmProvider === 'openai' ? 'OpenAI' : 'Custom API';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

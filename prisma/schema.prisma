@@ -33,10 +33,11 @@ model Environment {
 }
 
 model LlmConfig {
-  id        String   @id @default("default")
-  provider  String   @default("zai")       // "zai" | "anthropic" | "openai" | "custom"
-  apiKey    String   @default("")
-  baseUrl   String   @default("")
-  model     String   @default("")
-  updatedAt DateTime @updatedAt
+  id              String   @id @default("default")
+  provider        String   @default("zai")       // "zai" | "anthropic" | "openai" | "custom" | "claude-code"
+  apiKey          String   @default("")
+  baseUrl         String   @default("")
+  model           String   @default("")
+  claudeCodeAuto  Boolean  @default(false)        // Whether config was auto-detected from Claude Code CLI
+  updatedAt       DateTime @updatedAt
 }

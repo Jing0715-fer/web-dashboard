@@ -95,7 +95,7 @@ CRITICAL Rules:
 
     let response: string;
 
-    if (provider === 'zai' || !llmConfig?.apiKey) {
+    if (provider === 'zai' || (!llmConfig?.apiKey && provider !== 'claude-code')) {
       // Use built-in z-ai-web-dev-sdk
       const zai = await ZAI.create();
       const completion = await zai.chat.completions.create({
@@ -106,22 +106,39 @@ CRITICAL Rules:
         thinking: { type: 'disabled' },
       });
       response = completion.choices[0]?.message?.content || '';
-    } else if (provider === 'anthropic') {
+    } else if (provider === 'anthropic' || provider === 'claude-code') {
       // Use Anthropic Messages API
-      const apiUrl = llmConfig.baseUrl
-        ? `${llmConfig.baseUrl.replace(/\/$/, '')}/v1/messages`
+      // For claude-code provider, try environment variables if no stored key
+      let effectiveApiKey = llmConfig.apiKey;
+      let effectiveBaseUrl = llmConfig.baseUrl;
+      let effectiveModel = llmConfig.model || 'claude-sonnet-4-20250514';
+
+      if (provider === 'claude-code' && !effectiveApiKey) {
+        // Try to detect from environment
+        effectiveApiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY || '';
+        effectiveBaseUrl = process.env.ANTHROPIC_BASE_URL || process.env.CLAUDE_BASE_URL || effectiveBaseUrl;
+        effectiveModel = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || effectiveModel;
+      }
+
+      if (!effectiveApiKey) {
+        return NextResponse.json({
+          error: 'No API key available. Please configure LLM settings or set ANTHROPIC_API_KEY environment variable.',
+        }, { status: 400 });
+      }
+
+      const apiUrl = effectiveBaseUrl
+        ? `${effectiveBaseUrl.replace(/\/$/, '')}/v1/messages`
         : 'https://api.anthropic.com/v1/messages';
-      const model = llmConfig.model || 'claude-sonnet-4-20250514';
 
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': llmConfig.apiKey,
+          'x-api-key': effectiveApiKey,
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model,
+          model: effectiveModel,
           max_tokens: 4096,
           system: SYSTEM_PROMPT,
           messages: [
