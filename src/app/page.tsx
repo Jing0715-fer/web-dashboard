@@ -838,7 +838,7 @@ function LlmSettingsDialog({
             {provider === 'claude-code' && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Atom className="h-3 w-3 text-violet-500 dark:text-violet-400" />
-                Auto-detect configuration from Claude Code CLI. Reads ANTHROPIC_API_KEY env var and config files.
+                Auto-detect API key, base URL and model from Claude Code CLI config. No manual setup needed.
               </p>
             )}
             {provider === 'anthropic' && (
@@ -873,12 +873,37 @@ function LlmSettingsDialog({
                       ? `Configuration detected (Source: ${detectedInfo.source})`
                       : 'No Claude Code configuration found'}
                   </div>
-                  {detectedInfo.found && detectedInfo.details.length > 0 && (
-                    <ul className="text-xs text-muted-foreground space-y-0.5 ml-6">
-                      {detectedInfo.details.map((d, i) => (
-                        <li key={i}>{d}</li>
-                      ))}
-                    </ul>
+                  {detectedInfo.found && (
+                    <div className="ml-6 space-y-1.5">
+                      {/* Show detected model info */}
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Atom className="h-3 w-3 text-violet-500 dark:text-violet-400" />
+                        <span className="text-muted-foreground">Model:</span>
+                        <span className="font-mono text-violet-700 dark:text-violet-300">{detectedInfo.model || 'claude-sonnet-4-20250514'}</span>
+                      </div>
+                      {/* Show detected base URL */}
+                      {detectedInfo.baseUrl && (
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <Globe className="h-3 w-3 text-violet-500 dark:text-violet-400" />
+                          <span className="text-muted-foreground">Base URL:</span>
+                          <span className="font-mono text-violet-700 dark:text-violet-300">{detectedInfo.baseUrl}</span>
+                        </div>
+                      )}
+                      {/* Show API key status */}
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <Wifi className="h-3 w-3 text-violet-500 dark:text-violet-400" />
+                        <span className="text-muted-foreground">API Key:</span>
+                        <span className="font-mono text-violet-700 dark:text-violet-300">{detectedInfo.apiKey || '(not set)'}</span>
+                      </div>
+                      {/* Additional details */}
+                      {detectedInfo.details.length > 0 && (
+                        <ul className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                          {detectedInfo.details.map((d, i) => (
+                            <li key={i}>{d}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   )}
                   {!detectedInfo.found && (
                     <p className="text-xs text-muted-foreground ml-6">
@@ -887,6 +912,11 @@ function LlmSettingsDialog({
                   )}
                 </div>
               ) : null}
+
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Info className="h-3 w-3" />
+                Model, API key and base URL are read from Claude Code configuration. No manual setup needed.
+              </p>
 
               {/* Re-detect button */}
               <Button
@@ -969,8 +999,8 @@ function LlmSettingsDialog({
             </div>
           )}
 
-          {/* Model (only for custom providers and claude-code) */}
-          {(isCustomProvider || provider === 'claude-code') && (
+          {/* Model (only for custom providers, NOT claude-code — model is auto-detected) */}
+          {isCustomProvider && (
             <div className="space-y-2">
               <Label htmlFor="model" className="text-sm font-medium">Model</Label>
               {(provider === 'anthropic' || provider === 'claude-code') ? (
@@ -1061,7 +1091,7 @@ function LlmSettingsDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving || (isCustomProvider && !apiKey) || ((provider === 'anthropic' || provider === 'claude-code') && model === '__custom__')} className="gap-2">
+            <Button onClick={handleSave} disabled={saving || (isCustomProvider && !apiKey) || (provider === 'anthropic' && model === '__custom__')} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Save
             </Button>
