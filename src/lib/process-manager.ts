@@ -227,9 +227,9 @@ export async function startProcess(
     // Check if port is now in use
     const portActive = await checkPortStatus(port);
     if (portActive) {
-      appendLog(key, `[${new Date().toISOString()}] ✅ Port ${port} is now active`);
+      appendLog(key, `[${new Date().toISOString()}] [OK] Port ${port} is now active`);
     } else {
-      appendLog(key, `[${new Date().toISOString()}] ⏳ Port ${port} is not yet active (process may still be starting)`);
+      appendLog(key, `[${new Date().toISOString()}] [WAIT] Port ${port} is not yet active (process may still be starting)`);
     }
 
     return { success: true, pid: child.pid || undefined };

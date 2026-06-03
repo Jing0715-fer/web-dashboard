@@ -87,31 +87,71 @@ CRITICAL Rules:
 7. Respond with ONLY valid JSON, no markdown or explanation
 8. The icon should be a lucide-react icon name (e.g., 'globe', 'code', 'database', 'smartphone', 'terminal', 'rocket') that best represents the project's purpose`;
 
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: 'assistant', content: 'You are a DevOps expert that analyzes project structures and generates startup configurations. Always respond with valid JSON only. Ensure all port numbers are different between environments and all IP addresses are valid.' },
-        { role: 'user', content: prompt },
-      ],
-      thinking: { type: 'disabled' },
-    });
+    // Get LLM configuration
+    const llmConfig = await db.llmConfig.findUnique({ where: { id: 'default' } });
+    const provider = llmConfig?.provider || 'zai';
 
-    const response = completion.choices[0]?.message?.content || '';
-    
+    let response: string;
+
+    if (provider === 'zai' || !llmConfig?.apiKey) {
+      // Use built-in z-ai-web-dev-sdk
+      const zai = await ZAI.create();
+      const completion = await zai.chat.completions.create({
+        messages: [
+          { role: 'assistant', content: 'You are a DevOps expert that analyzes project structures and generates startup configurations. Always respond with valid JSON only. Ensure all port numbers are different between environments and all IP addresses are valid.' },
+          { role: 'user', content: prompt },
+        ],
+        thinking: { type: 'disabled' },
+      });
+      response = completion.choices[0]?.message?.content || '';
+    } else {
+      // Use custom OpenAI-compatible API
+      const apiUrl = llmConfig.baseUrl
+        ? `${llmConfig.baseUrl.replace(/\/$/, '')}/v1/chat/completions`
+        : 'https://api.openai.com/v1/chat/completions';
+      const model = llmConfig.model || 'gpt-4o-mini';
+
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${llmConfig.apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: 'You are a DevOps expert that analyzes project structures and generates startup configurations. Always respond with valid JSON only. Ensure all port numbers are different between environments and all IP addresses are valid.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.3,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        return NextResponse.json({
+          error: `LLM API error (${res.status}): ${errorText.slice(0, 200)}`,
+        }, { status: 500 });
+      }
+
+      const data = await res.json();
+      response = data.choices?.[0]?.message?.content || '';
+    }
+
     // Parse JSON from response (handle markdown code blocks)
     let jsonStr = response;
     const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
       jsonStr = jsonMatch[1];
     }
-    
+
     let analysis;
     try {
       analysis = JSON.parse(jsonStr.trim());
     } catch {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Failed to parse LLM response',
-        rawResponse: response,
+        rawResponse: response.slice(0, 500),
       }, { status: 500 });
     }
 
@@ -171,13 +211,14 @@ CRITICAL Rules:
       include: { environments: true },
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       project: updatedProject,
       analysis: {
         projectName: analysis.projectName,
         description: analysis.description,
         icon: analysis.icon,
         environments: envs,
+        provider,
       },
     });
   } catch (e: any) {

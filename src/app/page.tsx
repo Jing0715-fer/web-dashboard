@@ -10,6 +10,7 @@ import {
   Code, Database, Smartphone, ShoppingCart, Layout, Palette,
   Cpu, BookOpen, Music, Gamepad2, BarChart3, Shield, Camera,
   Map, Cloud, Rocket, Puzzle, Folder, Flame, Laptop, Atom,
+  Key, Wifi, WifiOff, Eye, EyeOff, TestTube,
   type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ import {
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
 
 // ============ Icon Registry ============
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -97,6 +99,14 @@ interface Project {
   createdAt: string;
   updatedAt: string;
   environments: Environment[];
+}
+
+interface LlmConfigState {
+  provider: string;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  hasApiKey: boolean;
 }
 
 // ============ API Helpers ============
@@ -225,6 +235,8 @@ export default function DashboardPage() {
   const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [deleteProject, setDeleteProject] = useState<Project | null>(null);
   const [cardActionLoading, setCardActionLoading] = useState<string | null>(null);
+  const [showLlmSettings, setShowLlmSettings] = useState(false);
+  const [llmConfig, setLlmConfig] = useState<LlmConfigState | null>(null);
   const { toast } = useToast();
 
   const refresh = useCallback(async () => {
@@ -238,11 +250,21 @@ export default function DashboardPage() {
     }
   }, [toast]);
 
+  const fetchLlmConfig = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ config: LlmConfigState }>('/api/llm-config');
+      setLlmConfig(data.config);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     refresh();
+    fetchLlmConfig();
     const interval = setInterval(refresh, 8000);
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [refresh, fetchLlmConfig]);
 
   const handleDeleteProject = async () => {
     if (!deleteProject) return;
@@ -297,6 +319,8 @@ export default function DashboardPage() {
   );
   const totalEnvs = projects.reduce((acc, p) => acc + p.environments.length, 0);
 
+  const isLlmReady = llmConfig?.provider === 'zai' || llmConfig?.hasApiKey;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
@@ -312,6 +336,23 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowLlmSettings(true)}
+                    className={isLlmReady ? 'text-emerald-600 hover:text-emerald-700' : 'text-amber-500 hover:text-amber-600'}
+                  >
+                    {isLlmReady ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>{isLlmReady ? 'LLM Connected - Click to configure' : 'LLM Not Configured - Click to set up'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button variant="ghost" size="icon" onClick={refresh} title="Refresh">
               <RefreshCw className="h-4 w-4" />
             </Button>
@@ -407,6 +448,15 @@ export default function DashboardPage() {
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
         onSuccess={() => { setShowAddDialog(false); refresh(); }}
+        llmReady={isLlmReady}
+        llmProvider={llmConfig?.provider || 'zai'}
+      />
+
+      {/* LLM Settings Dialog */}
+      <LlmSettingsDialog
+        open={showLlmSettings}
+        onOpenChange={setShowLlmSettings}
+        onConfigChanged={fetchLlmConfig}
       />
 
       {/* Project Detail Sheet */}
@@ -418,6 +468,7 @@ export default function DashboardPage() {
           if (!open) setSelectedProjectId(null);
         }}
         onProjectChanged={refresh}
+        llmReady={isLlmReady}
       />
 
       {/* Delete Confirmation */}
@@ -438,6 +489,224 @@ export default function DashboardPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// ============ LLM Settings Dialog ============
+function LlmSettingsDialog({
+  open,
+  onOpenChange,
+  onConfigChanged,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfigChanged: () => void;
+}) {
+  const [provider, setProvider] = useState('zai');
+  const [apiKey, setApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
+  const [model, setModel] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      // Fetch current config
+      apiFetch<{ config: LlmConfigState }>('/api/llm-config')
+        .then(data => {
+          setProvider(data.config.provider);
+          setApiKey(data.config.apiKey); // masked
+          setBaseUrl(data.config.baseUrl);
+          setModel(data.config.model);
+          setTestResult(null);
+        })
+        .catch(() => {});
+    }
+  }, [open]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await apiFetch('/api/llm-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey, baseUrl, model }),
+      });
+      toast({ title: 'LLM settings saved', duration: 2000 });
+      onConfigChanged();
+      onOpenChange(false);
+    } catch (e: any) {
+      toast({ title: 'Failed to save settings', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      // Save first so test uses latest config
+      await apiFetch('/api/llm-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey, baseUrl, model }),
+      });
+      onConfigChanged();
+
+      const result = await apiFetch<{ success: boolean; provider: string; message: string }>('/api/llm-config', {
+        method: 'POST',
+      });
+      setTestResult({ success: result.success, message: result.message });
+    } catch (e: any) {
+      setTestResult({ success: false, message: e.message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const isCustomProvider = provider !== 'zai';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5 text-emerald-500" />
+            LLM Configuration
+          </DialogTitle>
+          <DialogDescription>
+            Configure the AI model used for project analysis and auto-configuration.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-5 py-4">
+          {/* Provider Selection */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Provider</Label>
+            <Select value={provider} onValueChange={(val) => { setProvider(val); setTestResult(null); }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="zai">
+                  <span className="flex items-center gap-2">
+                    <Zap className="h-3.5 w-3.5" />
+                    Built-in AI (Default)
+                  </span>
+                </SelectItem>
+                <SelectItem value="openai">
+                  <span className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5" />
+                    OpenAI
+                  </span>
+                </SelectItem>
+                <SelectItem value="custom">
+                  <span className="flex items-center gap-2">
+                    <Server className="h-3.5 w-3.5" />
+                    Custom OpenAI-Compatible
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {provider === 'zai' && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Wifi className="h-3 w-3 text-emerald-500" />
+                Built-in AI service, no configuration needed. Works out of the box.
+              </p>
+            )}
+          </div>
+
+          {/* API Key (only for custom providers) */}
+          {isCustomProvider && (
+            <div className="space-y-2">
+              <Label htmlFor="api-key" className="text-sm font-medium">API Key</Label>
+              <div className="relative">
+                <Input
+                  id="api-key"
+                  type={showApiKey ? 'text' : 'password'}
+                  placeholder="sk-..."
+                  value={apiKey}
+                  onChange={(e) => { setApiKey(e.target.value); setTestResult(null); }}
+                  className="pr-10"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                >
+                  {showApiKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Base URL (only for custom providers) */}
+          {isCustomProvider && (
+            <div className="space-y-2">
+              <Label htmlFor="base-url" className="text-sm font-medium">
+                Base URL <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="base-url"
+                placeholder={provider === 'openai' ? 'https://api.openai.com' : 'https://your-api.example.com'}
+                value={baseUrl}
+                onChange={(e) => { setBaseUrl(e.target.value); setTestResult(null); }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave empty for official API. For proxies or self-hosted, enter the base URL.
+              </p>
+            </div>
+          )}
+
+          {/* Model (only for custom providers) */}
+          {isCustomProvider && (
+            <div className="space-y-2">
+              <Label htmlFor="model" className="text-sm font-medium">Model</Label>
+              <Input
+                id="model"
+                placeholder={provider === 'openai' ? 'gpt-4o-mini' : 'model-name'}
+                value={model}
+                onChange={(e) => { setModel(e.target.value); setTestResult(null); }}
+              />
+              <p className="text-xs text-muted-foreground">
+                The model to use for chat completions. Examples: gpt-4o-mini, gpt-4o, claude-3-haiku, deepseek-chat
+              </p>
+            </div>
+          )}
+
+          {/* Test Result */}
+          {testResult && (
+            <div className={`rounded-lg p-3 text-sm flex items-start gap-2 ${
+              testResult.success
+                ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
+                : 'bg-red-500/10 text-red-700 border border-red-500/20'
+            }`}>
+              {testResult.success ? <Check className="h-4 w-4 shrink-0 mt-0.5" /> : <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+              <span>{testResult.message}</span>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="flex-row gap-2 sm:justify-between">
+          <Button variant="outline" onClick={handleTest} disabled={testing || (isCustomProvider && !apiKey)} className="gap-1.5">
+            {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <TestTube className="h-4 w-4" />}
+            Test Connection
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving || (isCustomProvider && !apiKey)} className="gap-2">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              Save
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -678,10 +947,14 @@ function AddProjectDialog({
   open,
   onOpenChange,
   onSuccess,
+  llmReady,
+  llmProvider,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  llmReady: boolean;
+  llmProvider: string;
 }) {
   const [path, setPath] = useState('');
   const [name, setName] = useState('');
@@ -704,26 +977,30 @@ function AddProjectDialog({
         body: JSON.stringify({ path: path.trim(), name: name.trim() || undefined }),
       });
 
-      toast({ title: 'Project created', description: 'Starting AI analysis...' });
+      if (llmReady) {
+        toast({ title: 'Project created', description: 'Starting AI analysis...' });
 
-      // Then analyze with LLM
-      setIsAnalyzing(true);
-      try {
-        const result = await apiFetch<{ project: Project; analysis: any }>(`/api/projects/${data.project.id}/analyze`, {
-          method: 'POST',
-        });
-        toast({
-          title: 'AI Configuration Complete',
-          description: `Detected ${result.analysis?.environments?.length || 0} environments for ${result.analysis?.projectName || data.project.name}`,
-          duration: 5000,
-        });
-      } catch (analyzeErr: any) {
-        toast({
-          title: 'AI Analysis Failed',
-          description: analyzeErr.message + '. You can manually configure environments.',
-          variant: 'destructive',
-          duration: 7000,
-        });
+        // Then analyze with LLM
+        setIsAnalyzing(true);
+        try {
+          const result = await apiFetch<{ project: Project; analysis: any }>(`/api/projects/${data.project.id}/analyze`, {
+            method: 'POST',
+          });
+          toast({
+            title: 'AI Configuration Complete',
+            description: `Detected ${result.analysis?.environments?.length || 0} environments for ${result.analysis?.projectName || data.project.name}`,
+            duration: 5000,
+          });
+        } catch (analyzeErr: any) {
+          toast({
+            title: 'AI Analysis Failed',
+            description: analyzeErr.message + '. You can manually configure environments.',
+            variant: 'destructive',
+            duration: 7000,
+          });
+        }
+      } else {
+        toast({ title: 'Project created', description: 'Configure LLM settings to enable AI auto-configuration.' });
       }
 
       setPath('');
@@ -736,6 +1013,8 @@ function AddProjectDialog({
       setIsAnalyzing(false);
     }
   };
+
+  const providerLabel = llmProvider === 'zai' ? 'Built-in AI' : llmProvider === 'openai' ? 'OpenAI' : 'Custom API';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -750,6 +1029,24 @@ function AddProjectDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {/* LLM Status Banner */}
+          <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
+            llmReady
+              ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
+              : 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+          }`}>
+            {llmReady ? (
+              <>
+                <Wifi className="h-3.5 w-3.5 shrink-0" />
+                <span>AI auto-configuration enabled ({providerLabel})</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3.5 w-3.5 shrink-0" />
+                <span>LLM not configured. Project will be added without AI analysis.</span>
+              </>
+            )}
+          </div>
           <div className="space-y-2">
             <Label htmlFor="path" className="text-sm font-medium">
               Project Directory <span className="text-destructive">*</span>
@@ -814,11 +1111,13 @@ function ProjectDetailSheet({
   open,
   onOpenChange,
   onProjectChanged,
+  llmReady,
 }: {
   projectId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProjectChanged: () => void;
+  llmReady: boolean;
 }) {
   const [project, setProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -987,10 +1286,24 @@ function ProjectDetailSheet({
                 </div>
 
                 <div className="flex gap-2">
-                  <Button onClick={handleAnalyze} disabled={isAnalyzing} className="gap-2 flex-1">
+                  <Button onClick={handleAnalyze} disabled={isAnalyzing || !llmReady} className="gap-2 flex-1">
                     {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                     {isAnalyzing ? 'Analyzing...' : 'Re-Analyze with AI'}
                   </Button>
+                  {!llmReady && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" size="icon" disabled>
+                            <Info className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Configure LLM settings first to enable AI analysis</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
 
                 <div>
@@ -1015,7 +1328,7 @@ function ProjectDetailSheet({
                     <Terminal className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-4">No environments configured</p>
                     <div className="flex gap-2 justify-center">
-                      <Button variant="outline" size="sm" onClick={handleAnalyze} disabled={isAnalyzing} className="gap-1">
+                      <Button variant="outline" size="sm" onClick={handleAnalyze} disabled={isAnalyzing || !llmReady} className="gap-1">
                         {isAnalyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                         AI Auto-Configure
                       </Button>

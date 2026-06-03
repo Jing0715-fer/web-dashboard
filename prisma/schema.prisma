@@ -31,3 +31,12 @@ model Environment {
 
   @@unique([projectId, name])
 }
+
+model LlmConfig {
+  id        String   @id @default("default")
+  provider  String   @default("zai")       // "zai" | "openai" | "custom"
+  apiKey    String   @default("")
+  baseUrl   String   @default("")
+  model     String   @default("")
+  updatedAt DateTime @updatedAt
+}

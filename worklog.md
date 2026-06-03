@@ -79,3 +79,45 @@ Stage Summary:
 - Header and footer visual enhancements
 - All lint checks pass, no errors
 - No backend API changes required
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Add LLM configuration settings (API key, base URL, model) and UI optimization
+
+Work Log:
+- Added LlmConfig model to Prisma schema (provider, apiKey, baseUrl, model) with singleton pattern (id="default")
+- Pushed schema to SQLite database and regenerated Prisma client
+- Created /api/llm-config API routes:
+  - GET: Retrieve LLM config (API key masked for security)
+  - PUT: Update LLM config (smart masking detection - only updates API key if not masked)
+  - POST: Test LLM connection (works for both z-ai-web-dev-sdk and custom OpenAI-compatible APIs)
+- Updated /api/projects/[id]/analyze route to support both providers:
+  - If provider is "zai" or no API key: uses built-in z-ai-web-dev-sdk
+  - If custom provider: uses fetch to OpenAI-compatible chat completions API with configured base URL, model, and API key
+- Added LlmSettingsDialog component with:
+  - Provider selection dropdown (Built-in AI, OpenAI, Custom OpenAI-Compatible)
+  - Conditional fields: API Key (with show/hide toggle), Base URL, Model
+  - Test Connection button that saves config first then tests
+  - Visual test result display (green success / red error)
+- Added LLM connection status indicator to header:
+  - WiFi icon (green) when LLM is configured
+  - WiFiOff icon (amber) when LLM is not configured
+  - Tooltip explaining the status
+- Added LLM status banner to Add Project dialog:
+  - Green "AI auto-configuration enabled (Built-in AI)" when ready
+  - Amber "LLM not configured" warning when not ready
+- Added LLM readiness check to "Re-Analyze with AI" button (disabled when LLM not configured)
+- Replaced emoji icons in process-manager.ts:
+  - emoji checkmark → [OK]
+  - emoji hourglass → [WAIT]
+- All lint checks pass
+- Browser tested: LLM settings dialog opens, provider switching works, API key field with show/hide, Test Connection returns success for Built-in AI
+
+Stage Summary:
+- LLM configuration fully functional with 3 provider options
+- Built-in AI (z-ai-web-dev-sdk) works out of the box - verified with Test Connection
+- Custom OpenAI-compatible API support for users who want their own LLM provider
+- API key is securely masked in responses and only updated when changed
+- Visual status indicators throughout the UI (header, add project dialog, detail sheet)
+- No emoji icons remaining in codebase
