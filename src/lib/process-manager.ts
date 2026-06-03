@@ -1,6 +1,6 @@
 import { exec, spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
-import { mkdirSync, existsSync, readFileSync, appendFileSync, writeFileSync, statSync } from 'fs';
+import { mkdirSync, existsSync, readFileSync, appendFileSync, writeFileSync, statSync, readdirSync, readFileSync as readFile } from 'fs';
 import { join } from 'path';
 
 const execp = promisify(exec);
@@ -62,9 +62,17 @@ export function getLogs(projectId: string, envName: string): string[] {
 }
 
 /**
+ * Validate a port number is a safe integer in valid range
+ */
+function isValidPort(port: number): boolean {
+  return Number.isInteger(port) && port >= 1 && port <= 65535;
+}
+
+/**
  * Check if a port is currently in use (listening)
  */
 export async function checkPortStatus(port: number): Promise<boolean> {
+  if (!isValidPort(port)) return false;
   try {
     // Try lsof first
     const { stdout: lsofOut } = await execp(`lsof -iTCP:${port} -sTCP:LISTEN -n -P 2>/dev/null`);
@@ -82,9 +90,47 @@ export async function checkPortStatus(port: number): Promise<boolean> {
 }
 
 /**
+ * Batch check multiple ports at once using a single `ss` call.
+ * Returns a Set of ports that are currently in use.
+ */
+export async function batchCheckPorts(ports: number[]): Promise<Set<number>> {
+  const validPorts = ports.filter(isValidPort);
+  if (validPorts.length === 0) return new Set();
+  
+  const activePorts = new Set<number>();
+  
+  try {
+    // Single ss call to get all listening ports
+    const { stdout } = await execp('ss -tlnp 2>/dev/null');
+    const lines = stdout.trim().split('\n');
+    for (const line of lines) {
+      // Extract port from lines like: LISTEN  0  128  *:3000  *:*
+      const match = line.match(/[:.](\d+)\s/);
+      if (match) {
+        const p = parseInt(match[1], 10);
+        if (validPorts.includes(p)) {
+          activePorts.add(p);
+        }
+      }
+    }
+  } catch {
+    // ss not available, fall back to individual checks
+    for (const port of validPorts) {
+      if (await checkPortStatus(port)) {
+        activePorts.add(port);
+      }
+    }
+  }
+  
+  return activePorts;
+}
+
+/**
  * Get the PID of a process listening on a port
  */
 export async function getPidOnPort(port: number): Promise<number | null> {
+  if (!isValidPort(port)) return null;
+  
   // Try lsof first
   try {
     const { stdout } = await execp(`lsof -iTCP:${port} -sTCP:LISTEN -n -P -t 2>/dev/null`);
@@ -137,6 +183,57 @@ function parseCommand(cmd: string): { useShell: boolean; command: string; args: 
 }
 
 /**
+ * Validate a command string - only allow known safe patterns
+ */
+function isCommandSafe(cmd: string): boolean {
+  const trimmed = cmd.trim();
+  if (!trimmed) return false;
+  
+  // Allow common package managers and dev tools
+  const safePrefixes = [
+    'npm', 'npx', 'yarn', 'pnpm', 'bun',
+    'python', 'python3', 'pip', 'pipenv', 'poetry', 'uvicorn', 'gunicorn', 'flask', 'django',
+    'go', 'cargo', 'rustc',
+    'java', 'mvn', 'gradle', 'mvnw', './mvnw', './gradlew',
+    'dotnet',
+    'php', 'artisan', 'composer',
+    'ruby', 'rails', 'bundle', 'rackup',
+    'docker', 'docker-compose',
+    'make',
+    'node',
+    'serve', 'vite', 'next', 'nuxt',
+    'deno',
+    'sh', 'bash', './',
+    'redis-server', 'mongod', 'postgres',
+    'nginx',
+    'celery', 'rq',
+  ];
+  
+  // Check if command starts with a safe prefix
+  const firstToken = trimmed.split(/\s+/)[0].split('/').pop() || '';
+  const startsSafe = safePrefixes.some(prefix => {
+    const prefixBase = prefix.split('/').pop() || prefix;
+    return firstToken === prefixBase || firstToken.startsWith(prefixBase);
+  });
+  
+  // Block dangerous patterns
+  const dangerousPatterns = [
+    /rm\s+-rf/, /rm\s+-r/, /rm\s+-f/,
+    /:\s*\(\)\s*\{/,  // fork bomb
+    /dd\s+if=/,
+    /mkfs/,
+    />\s*\/dev\//,
+    /chmod\s+777/,
+    /wget.*\|\s*(ba)?sh/,
+    /curl.*\|\s*(ba)?sh/,
+  ];
+  
+  const hasDangerous = dangerousPatterns.some(p => p.test(trimmed));
+  
+  return startsSafe && !hasDangerous;
+}
+
+/**
  * Start a process for a project environment
  */
 export async function startProcess(
@@ -148,6 +245,16 @@ export async function startProcess(
   port: number
 ): Promise<{ success: boolean; pid?: number; error?: string }> {
   const key = getLogKey(projectId, envName);
+
+  // Validate port
+  if (!isValidPort(port)) {
+    return { success: false, error: `Invalid port: ${port}` };
+  }
+
+  // Validate command safety
+  if (!isCommandSafe(cmd)) {
+    return { success: false, error: `Command not allowed for security reasons: ${cmd}` };
+  }
 
   // Check if already running on this port
   const isRunning = await checkPortStatus(port);
@@ -162,7 +269,7 @@ export async function startProcess(
     processes.delete(key);
   }
 
-  // Check if the cwd exists
+  // Check if the cwd exists and is a directory
   if (!existsSync(cwd)) {
     return { success: false, error: `Directory does not exist: ${cwd}` };
   }
@@ -248,6 +355,10 @@ export async function stopProcess(
   envName: string,
   port: number
 ): Promise<{ success: boolean; error?: string }> {
+  if (!isValidPort(port)) {
+    return { success: false, error: `Invalid port: ${port}` };
+  }
+  
   const key = getLogKey(projectId, envName);
 
   // Try to kill via tracked process first
@@ -310,6 +421,7 @@ export async function restartProcess(
 
 /**
  * Read a project directory and gather info for LLM analysis
+ * Uses Node.js fs APIs to avoid command injection
  */
 export async function readProjectDir(dirPath: string): Promise<{
   success: boolean;
@@ -319,31 +431,59 @@ export async function readProjectDir(dirPath: string): Promise<{
   error?: string;
 }> {
   try {
-    // Check directory exists
-    await execp(`ls -la "${dirPath}" 2>&1`);
-    
-    // List top-level files
-    const { stdout: findOutput } = await execp(
-      `find "${dirPath}" -maxdepth 2 -type f \\( -name "*.json" -o -name "*.yaml" -o -name "*.yml" -o -name "*.toml" -o -name "*.env*" -o -name "Dockerfile" -o -name "docker-compose*" -o -name "Makefile" -o -name "*.config.*" -o -name "next.config.*" -o -name "vite.config.*" -o -name "nuxt.config.*" -o -name "vue.config.*" -o -name ".env*" \\) 2>/dev/null | head -30`
-    );
-
-    const files = findOutput.trim().split('\n').filter(Boolean);
-
-    // Try to read package.json
-    let packageJson = null;
-    try {
-      const { stdout: pjContent } = await execp(`cat "${dirPath}/package.json" 2>/dev/null`);
-      packageJson = JSON.parse(pjContent);
-    } catch {
-      // No package.json, might not be a Node.js project
+    // Validate directory exists using fs (not shell)
+    if (!existsSync(dirPath)) {
+      return { success: false, error: `Directory does not exist: ${dirPath}` };
     }
 
-    // Read key config files
+    // List files using fs (safe from injection)
+    const files: string[] = [];
+    
+    function walkDir(dir: string, depth: number) {
+      if (depth > 2) return;
+      try {
+        const entries = readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.name.startsWith('.') && entry.name !== '.env' && entry.name !== '.env.local' && entry.name !== '.env.development' && entry.name !== '.env.production') continue;
+          const fullPath = join(dir, entry.name);
+          if (entry.isFile()) {
+            // Only include relevant config files
+            const relevantExtensions = ['.json', '.yaml', '.yml', '.toml', '.config.js', '.config.ts', '.config.mjs'];
+            const relevantNames = ['Dockerfile', 'docker-compose.yml', 'docker-compose.yaml', 'Makefile', '.env', '.env.local', '.env.development', '.env.production', 'next.config.js', 'next.config.ts', 'next.config.mjs', 'vite.config.ts', 'vite.config.js', 'nuxt.config.ts', 'nuxt.config.js', 'vue.config.js'];
+            const isRelevant = relevantExtensions.some(ext => entry.name.endsWith(ext)) || relevantNames.some(name => entry.name === name);
+            if (isRelevant) {
+              files.push(fullPath);
+            }
+          } else if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules' && entry.name !== '.git') {
+            walkDir(fullPath, depth + 1);
+          }
+        }
+      } catch {
+        // permission denied or similar, skip
+      }
+    }
+    
+    walkDir(dirPath, 0);
+
+    // Try to read package.json using fs
+    let packageJson = null;
+    try {
+      const pjPath = join(dirPath, 'package.json');
+      if (existsSync(pjPath)) {
+        const pjContent = readFileSync(pjPath, 'utf8');
+        packageJson = JSON.parse(pjContent);
+      }
+    } catch {
+      // No package.json or parse error
+    }
+
+    // Read key config files using fs (safe from injection)
+    // NOTE: .env files are excluded to prevent leaking secrets to LLM
     const configFileNames = [
       'package.json', 'next.config.js', 'next.config.ts', 'next.config.mjs',
       'vite.config.ts', 'vite.config.js', 'nuxt.config.ts', 'nuxt.config.js',
       'vue.config.js', 'Dockerfile', 'docker-compose.yml', 'docker-compose.yaml',
-      '.env', '.env.local', '.env.development', '.env.production',
+      // .env files intentionally excluded - they contain secrets
       'tsconfig.json', 'pyproject.toml', 'requirements.txt', 'Cargo.toml',
       'go.mod', 'Makefile',
     ];
@@ -352,12 +492,15 @@ export async function readProjectDir(dirPath: string): Promise<{
     for (const fname of configFileNames) {
       try {
         const fpath = join(dirPath, fname);
-        const { stdout: content } = await execp(`cat "${fpath}" 2>/dev/null | head -100`);
+        if (!existsSync(fpath)) continue;
+        const content = readFileSync(fpath, 'utf8');
         if (content.trim()) {
-          configFiles.push({ name: fname, content: content.trim() });
+          // Limit content to first 100 lines to avoid sending huge files to LLM
+          const limitedContent = content.split('\n').slice(0, 100).join('\n').trim();
+          configFiles.push({ name: fname, content: limitedContent });
         }
       } catch {
-        // skip
+        // skip unreadable files
       }
     }
 

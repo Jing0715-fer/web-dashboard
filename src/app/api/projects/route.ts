@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { checkPortStatus } from '@/lib/process-manager';
+import { batchCheckPorts } from '@/lib/process-manager';
 
 // GET /api/projects - List all projects with environments and status
 export async function GET() {
@@ -10,18 +10,18 @@ export async function GET() {
       orderBy: { updatedAt: 'desc' },
     });
 
-    // Enrich with running status
-    const enriched = await Promise.all(
-      projects.map(async (project) => ({
-        ...project,
-        environments: await Promise.all(
-          project.environments.map(async (env) => ({
-            ...env,
-            status: (await checkPortStatus(env.port)) ? 'running' : 'stopped',
-          }))
-        ),
-      }))
-    );
+    // Batch check all ports at once for efficiency
+    const allPorts = projects.flatMap(p => p.environments.map(e => e.port));
+    const activePorts = await batchCheckPorts(allPorts);
+
+    // Enrich with running status using the batch result
+    const enriched = projects.map((project) => ({
+      ...project,
+      environments: project.environments.map((env) => ({
+        ...env,
+        status: activePorts.has(env.port) ? 'running' : 'stopped',
+      })),
+    }));
 
     return NextResponse.json({ projects: enriched });
   } catch (e: any) {

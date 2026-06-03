@@ -155,10 +155,51 @@ CRITICAL Rules:
       }, { status: 500 });
     }
 
-    // Validate and fix port conflicts
-    const envs = analysis.environments || [];
+    // Validate LLM-generated values before storing
+    const validatedEnvs: Array<{ name: string; cmd: string; port: number; envVars: Record<string, string> }> = [];
+    for (const env of (analysis.environments || [])) {
+      // Validate environment name - only alphanumeric, dash, underscore
+      const sanitizedName = String(env.name || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50);
+      if (!sanitizedName) continue;
+
+      // Validate port
+      const envPort = Number(env.port);
+      if (!Number.isInteger(envPort) || envPort < 1 || envPort > 65535) continue;
+
+      // Validate command - must start with a known safe prefix
+      const cmdStr = String(env.cmd || '').trim();
+      const safeCmdPrefixes = ['npm', 'npx', 'yarn', 'pnpm', 'bun', 'python', 'python3', 'go', 'cargo', 'make', 'node', 'deno', 'flask', 'gunicorn', 'uvicorn', 'django', 'dotnet', 'php', 'ruby', 'rails', 'bundle', 'docker', 'sh', 'bash', './'];
+      const isSafe = safeCmdPrefixes.some(prefix => cmdStr.startsWith(prefix));
+      if (!isSafe || cmdStr.length > 500) continue;
+
+      // Validate envVars is an object
+      let envVarsObj: Record<string, string> = {};
+      if (env.envVars && typeof env.envVars === 'object' && !Array.isArray(env.envVars)) {
+        for (const [key, value] of Object.entries(env.envVars)) {
+          if (typeof key === 'string' && typeof value === 'string') {
+            envVarsObj[key] = value;
+          }
+        }
+      }
+
+      validatedEnvs.push({
+        name: sanitizedName,
+        cmd: cmdStr,
+        port: envPort,
+        envVars: envVarsObj,
+      });
+    }
+
+    if (validatedEnvs.length === 0) {
+      return NextResponse.json({
+        error: 'LLM did not generate any valid environment configurations',
+        rawResponse: response.slice(0, 500),
+      }, { status: 500 });
+    }
+
+    // Fix port conflicts between validated environments
     const usedPorts = new Set<number>();
-    for (const env of envs) {
+    for (const env of validatedEnvs) {
       if (usedPorts.has(env.port)) {
         // Find next available port
         let newPort = env.port + 1;
@@ -170,18 +211,24 @@ CRITICAL Rules:
       usedPorts.add(env.port);
     }
 
+    // Validate and sanitize project name/description/icon
+    const sanitizedName = String(analysis.projectName || project.name).slice(0, 100);
+    const sanitizedDesc = String(analysis.description || project.description).slice(0, 500);
+    const allowedIcons = ['folder', 'globe', 'code', 'database', 'smartphone', 'shopping-cart', 'layout', 'palette', 'cpu', 'book-open', 'music', 'gamepad-2', 'bar-chart', 'shield', 'camera', 'map', 'cloud', 'terminal', 'rocket', 'puzzle', 'package', 'zap', 'laptop', 'atom', 'flame', 'server'];
+    const sanitizedIcon = allowedIcons.includes(analysis.icon) ? analysis.icon : project.icon;
+
     // Update project info
     await db.project.update({
       where: { id },
       data: {
-        name: analysis.projectName || project.name,
-        description: analysis.description || project.description,
-        icon: analysis.icon || project.icon,
+        name: sanitizedName,
+        description: sanitizedDesc,
+        icon: sanitizedIcon,
       },
     });
 
     // Create environments
-    for (const env of envs) {
+    for (const env of validatedEnvs) {
       const existing = project.environments.find(e => e.name === env.name);
       if (existing) {
         await db.environment.update({
@@ -189,7 +236,7 @@ CRITICAL Rules:
           data: {
             cmd: env.cmd,
             port: env.port,
-            envVars: JSON.stringify(env.envVars || {}),
+            envVars: JSON.stringify(env.envVars),
           },
         });
       } else {
@@ -199,7 +246,7 @@ CRITICAL Rules:
             name: env.name,
             cmd: env.cmd,
             port: env.port,
-            envVars: JSON.stringify(env.envVars || {}),
+            envVars: JSON.stringify(env.envVars),
           },
         });
       }
@@ -214,10 +261,10 @@ CRITICAL Rules:
     return NextResponse.json({
       project: updatedProject,
       analysis: {
-        projectName: analysis.projectName,
-        description: analysis.description,
-        icon: analysis.icon,
-        environments: envs,
+        projectName: sanitizedName,
+        description: sanitizedDesc,
+        icon: sanitizedIcon,
+        environments: validatedEnvs,
         provider,
       },
     });

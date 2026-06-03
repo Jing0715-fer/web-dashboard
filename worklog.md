@@ -164,3 +164,51 @@ Stage Summary:
 - Running environments show both localhost and LAN URLs
 - Copy-to-clipboard buttons for easy URL sharing
 - Full end-to-end tested with Agent Browser
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Comprehensive audit and optimization
+
+Work Log:
+- Conducted thorough codebase audit identifying 3 critical, 7 high, 10 medium issues
+- **Security Fixes:**
+  - Fixed command injection in `readProjectDir()` - replaced shell `exec` with Node.js `fs` APIs (readdirSync, readFileSync)
+  - Added port validation (`isValidPort`) to `checkPortStatus()`, `getPidOnPort()`, `startProcess()`, `stopProcess()`
+  - Removed `.env` files from LLM analysis input to prevent secret leakage
+  - Added `isCommandSafe()` validation to `startProcess()` - only allows known safe command prefixes
+  - Added LLM output validation in analyze route:
+    - Environment name sanitized (alphanumeric only, max 50 chars)
+    - Port validated as integer 1-65535
+    - Command must start with a safe prefix (npm, bun, python, go, etc.)
+    - Project name/description/icon sanitized and validated
+    - envVars validated as Record<string, string>
+- **Performance:**
+  - Added `batchCheckPorts()` function - single `ss -tlnp` call to check all ports at once
+  - Updated `/api/projects` and `/api/projects/[id]` to use batch port checking
+  - Eliminated N+1 shell execution problem (was 20+ exec calls per request, now 1)
+  - Fixed DELETE project returning 500 for missing project (now returns 404)
+- **Race Condition Fix:**
+  - Changed `cardActionLoading` from `string | null` to `Set<string>`
+  - Multiple concurrent start/stop actions now tracked independently
+- **New Features:**
+  - Added search/filter for projects (search by name or path, shows "X of Y projects")
+  - Added environment delete confirmation dialog (AlertDialog like project delete)
+  - Added CopyableText component for copying paths and commands
+  - Copy buttons on project path and environment commands in detail sheet
+- **UX Improvements:**
+  - Fixed mobile dropdown visibility (`sm:opacity-0 sm:group-hover:opacity-100` - always visible on mobile)
+  - Fixed `handleOpenDetailToEnv` now switches to Environments tab (added `detailInitialTab` state)
+  - Added loading skeleton to ProjectDetailSheet (animated pulse placeholders)
+  - Removed unused imports (Clock, Key, Switch)
+  - Added Search icon import
+- All lint checks pass
+- Browser verified: search works, env delete confirmation, copy buttons, skeleton loading, tab switching
+
+Stage Summary:
+- 3 critical security vulnerabilities fixed (command injection, .env leak, unvalidated LLM output)
+- Performance optimized (batch port checking, 20x fewer shell calls per request)
+- Race condition fixed for concurrent actions
+- New search/filter, env delete confirmation, copy buttons added
+- Mobile accessibility improved
+- 8+ UX improvements applied

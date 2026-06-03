@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { stopProcess, checkPortStatus } from '@/lib/process-manager';
+import { stopProcess, batchCheckPorts } from '@/lib/process-manager';
 
 // GET /api/projects/[id]
 export async function GET(
@@ -18,15 +18,16 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Enrich with status
+    // Batch check ports for efficiency
+    const ports = project.environments.map(e => e.port);
+    const activePorts = await batchCheckPorts(ports);
+
     const enriched = {
       ...project,
-      environments: await Promise.all(
-        project.environments.map(async (env) => ({
-          ...env,
-          status: (await checkPortStatus(env.port)) ? 'running' : 'stopped',
-        }))
-      ),
+      environments: project.environments.map((env) => ({
+        ...env,
+        status: activePorts.has(env.port) ? 'running' : 'stopped',
+      })),
     };
 
     return NextResponse.json({ project: enriched });
@@ -75,10 +76,12 @@ export async function DELETE(
       include: { environments: true },
     });
 
-    if (project) {
-      for (const env of project.environments) {
-        await stopProcess(id, env.name, env.port);
-      }
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    for (const env of project.environments) {
+      await stopProcess(id, env.name, env.port);
     }
 
     await db.project.delete({ where: { id } });

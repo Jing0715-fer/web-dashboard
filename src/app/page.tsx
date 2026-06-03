@@ -5,12 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, RefreshCw, FolderOpen, Server, Trash2, Play, Square,
   RotateCcw, Settings, Terminal, Sparkles, ExternalLink,
-  ChevronRight, Clock, Globe, X, Loader2, Edit3, Check,
+  ChevronRight, Globe, X, Loader2, Edit3, Check,
   AlertCircle, Package, MoreVertical, Info, Zap, Activity,
   Code, Database, Smartphone, ShoppingCart, Layout, Palette,
   Cpu, BookOpen, Music, Gamepad2, BarChart3, Shield, Camera,
   Map, Cloud, Rocket, Puzzle, Folder, Flame, Laptop, Atom,
-  Key, Wifi, WifiOff, Eye, EyeOff, TestTube, Copy,
+  Search, Wifi, WifiOff, Eye, EyeOff, TestTube, Copy,
   type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ import {
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Switch } from '@/components/ui/switch';
+
 
 // ============ Icon Registry ============
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -156,6 +156,28 @@ function CopyableUrl({ url, label }: { url: string; label?: string }) {
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+}
+
+// ============ Copyable Text ============
+function CopyableText({ text, className }: { text: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  };
+  return (
+    <button
+      className={`shrink-0 transition-colors ${copied ? 'text-emerald-600' : 'text-muted-foreground hover:text-foreground'} ${className || ''}`}
+      onClick={handleCopy}
+      title={`Copy: ${text}`}
+    >
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+    </button>
   );
 }
 
@@ -276,7 +298,9 @@ export default function DashboardPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [deleteProject, setDeleteProject] = useState<Project | null>(null);
-  const [cardActionLoading, setCardActionLoading] = useState<string | null>(null);
+  const [cardActionLoading, setCardActionLoading] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [detailInitialTab, setDetailInitialTab] = useState('overview');
   const [showLlmSettings, setShowLlmSettings] = useState(false);
   const [llmConfig, setLlmConfig] = useState<LlmConfigState | null>(null);
   const [lanIP, setLanIP] = useState('');
@@ -337,16 +361,18 @@ export default function DashboardPage() {
 
   const handleOpenDetail = (projectId: string) => {
     setSelectedProjectId(projectId);
+    setDetailInitialTab('overview');
     setShowDetailSheet(true);
   };
 
   const handleOpenDetailToEnv = (projectId: string) => {
     setSelectedProjectId(projectId);
+    setDetailInitialTab('environments');
     setShowDetailSheet(true);
   };
 
   const handleCardAction = async (projectId: string, envId: string, action: 'start' | 'stop') => {
-    setCardActionLoading(envId);
+    setCardActionLoading(prev => new Set(prev).add(envId));
     try {
       const result = await apiFetch<{ ok: boolean; error?: string }>(
         `/api/projects/${projectId}/environments/${envId}/${action}`,
@@ -361,7 +387,7 @@ export default function DashboardPage() {
     } catch (e: any) {
       toast({ title: `${action} failed`, description: e.message, variant: 'destructive', duration: 5000 });
     } finally {
-      setCardActionLoading(null);
+      setCardActionLoading(prev => { const next = new Set(prev); next.delete(envId); return next; });
     }
   };
 
@@ -373,6 +399,8 @@ export default function DashboardPage() {
   const totalEnvs = projects.reduce((acc, p) => acc + p.environments.length, 0);
 
   const isLlmReady = llmConfig?.provider === 'zai' || llmConfig?.hasApiKey;
+
+  const filteredProjects = projects.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.path.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -466,23 +494,56 @@ export default function DashboardPage() {
         ) : projects.length === 0 ? (
           <EmptyState onAddProject={() => setShowAddDialog(true)} />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            <AnimatePresence mode="popLayout">
-              {projects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  lanIP={lanIP}
-                  onOpen={() => handleOpenDetail(project.id)}
-                  onOpenToEnv={() => handleOpenDetailToEnv(project.id)}
-                  onDelete={() => setDeleteProject(project)}
-                  onAction={(envId, action) => handleCardAction(project.id, envId, action)}
-                  onPortChange={refresh}
-                  actionLoading={cardActionLoading}
+          <>
+            {/* Search / Filter Bar */}
+            <div className="mb-4 flex items-center gap-3">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search projects..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9 h-9"
                 />
-              ))}
-            </AnimatePresence>
-          </div>
+                {searchQuery && (
+                  <button
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {filteredProjects.length} of {projects.length} projects
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <AnimatePresence mode="popLayout">
+                {filteredProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    lanIP={lanIP}
+                    onOpen={() => handleOpenDetail(project.id)}
+                    onOpenToEnv={() => handleOpenDetailToEnv(project.id)}
+                    onDelete={() => setDeleteProject(project)}
+                    onAction={(envId, action) => handleCardAction(project.id, envId, action)}
+                    onPortChange={refresh}
+                    actionLoading={cardActionLoading}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+            {searchQuery && filteredProjects.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Search className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                <p className="text-muted-foreground">No projects match your search.</p>
+              </div>
+            )}
+          </>
         )}
       </main>
 
@@ -532,6 +593,7 @@ export default function DashboardPage() {
         onProjectChanged={refresh}
         llmReady={isLlmReady}
         lanIP={lanIP}
+        initialTab={detailInitialTab}
       />
 
       {/* Delete Confirmation */}
@@ -814,7 +876,7 @@ function ProjectCard({
   onDelete: () => void;
   onAction: (envId: string, action: 'start' | 'stop') => void;
   onPortChange: () => void;
-  actionLoading: string | null;
+  actionLoading: Set<string>;
 }) {
   const runningCount = project.environments.filter(e => e.status === 'running').length;
   const totalCount = project.environments.length;
@@ -872,10 +934,10 @@ function ProjectCard({
                       }
                     });
                   }}
-                  disabled={!!actionLoading}
+                  disabled={actionLoading.size > 0}
                   title={allRunning ? 'Stop All' : runningCount > 0 ? 'Start Remaining' : 'Start All'}
                 >
-                  {actionLoading ? (
+                  {actionLoading.size > 0 ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : allRunning ? (
                     <Square className="h-4 w-4" />
@@ -886,7 +948,7 @@ function ProjectCard({
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -911,7 +973,7 @@ function ProjectCard({
               {/* Quick toggle per environment */}
               <div className="flex flex-col gap-1">
                 {project.environments.map(env => {
-                  const isLoading = actionLoading === env.id;
+                  const isLoading = actionLoading.has(env.id);
                   return (
                     <div
                       key={env.id}
@@ -1183,6 +1245,7 @@ function ProjectDetailSheet({
   onProjectChanged,
   llmReady,
   lanIP,
+  initialTab,
 }: {
   projectId: string | null;
   open: boolean;
@@ -1190,14 +1253,18 @@ function ProjectDetailSheet({
   onProjectChanged: () => void;
   llmReady: boolean;
   lanIP: string;
+  initialTab: string;
 }) {
   const [project, setProject] = useState<Project | null>(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showEnvDialog, setShowEnvDialog] = useState(false);
   const [showLogViewer, setShowLogViewer] = useState<Environment | null>(null);
   const [editEnv, setEditEnv] = useState<Environment | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deleteEnv, setDeleteEnv] = useState<Environment | null>(null);
+
+  useEffect(() => { setActiveTab(initialTab); }, [initialTab]);
   const { toast } = useToast();
 
   // Fetch project data when the sheet opens or projectId changes
@@ -1225,7 +1292,27 @@ function ProjectDetailSheet({
     onProjectChanged();
   }, [refreshProject, onProjectChanged]);
 
-  if (!project) return null;
+  if (!project) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col">
+          <SheetHeader className="px-6 pt-6 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-muted animate-pulse" />
+              <div className="space-y-2">
+                <div className="h-5 w-40 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-60 bg-muted rounded animate-pulse" />
+              </div>
+            </div>
+          </SheetHeader>
+          <div className="flex-1 px-6 py-4 space-y-4">
+            <div className="h-20 bg-muted rounded-lg animate-pulse" />
+            <div className="h-32 bg-muted rounded-lg animate-pulse" />
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   const handleAction = async (envId: string, action: 'start' | 'stop' | 'restart') => {
     setActionLoading(`${envId}-${action}`);
@@ -1327,7 +1414,10 @@ function ProjectDetailSheet({
 
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-2">Project Path</h4>
-                  <code className="text-sm bg-muted px-3 py-2 rounded-md block font-mono">{project.path}</code>
+                  <div className="flex items-center gap-2">
+                    <code className="text-sm bg-muted px-3 py-2 rounded-md block font-mono flex-1">{project.path}</code>
+                    <CopyableText text={project.path} />
+                  </div>
                 </div>
 
                 <div>
@@ -1425,7 +1515,7 @@ function ProjectDetailSheet({
                       actionLoading={actionLoading}
                       onAction={(action) => handleAction(env.id, action)}
                       onEdit={() => { setEditEnv(env); setShowEnvDialog(true); }}
-                      onDelete={() => handleDeleteEnv(env.id)}
+                      onDelete={() => setDeleteEnv(env)}
                       onViewLogs={() => setShowLogViewer(env)}
                     />
                   ))
@@ -1454,6 +1544,24 @@ function ProjectDetailSheet({
           onOpenChange={(open) => { if (!open) setShowLogViewer(null); }}
         />
       )}
+
+      {/* Delete Environment Confirmation */}
+      <AlertDialog open={!!deleteEnv} onOpenChange={() => setDeleteEnv(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Environment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the <strong>{deleteEnv?.name}</strong> environment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (deleteEnv) handleDeleteEnv(deleteEnv.id); setDeleteEnv(null); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -1524,7 +1632,10 @@ function EnvironmentPanel({
       <div className="px-4 py-3 space-y-3">
         <div>
           <p className="text-xs text-muted-foreground mb-1">Start Command</p>
-          <code className="text-xs bg-muted px-2 py-1 rounded font-mono block truncate">{env.cmd}</code>
+          <div className="flex items-center gap-2">
+            <code className="text-xs bg-muted px-2 py-1 rounded font-mono flex-1 truncate">{env.cmd}</code>
+            <CopyableText text={env.cmd} />
+          </div>
         </div>
 
         {Object.keys(envVars).length > 0 && (
