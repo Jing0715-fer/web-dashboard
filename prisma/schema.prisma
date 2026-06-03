@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  name         String
+  path         String        @unique
+  description  String        @default("")
+  icon         String        @default("📦")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  environments Environment[]
+}
+
+model Environment {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String   // "test" | "production" | custom name
+  cmd       String   // start command, e.g. "npm run dev"
+  port      Int      // port number
+  envVars   String   @default("{}") // JSON string of environment variables
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, name])
+}
