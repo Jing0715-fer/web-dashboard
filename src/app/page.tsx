@@ -73,6 +73,7 @@ export default function DashboardPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [deleteProject, setDeleteProject] = useState<Project | null>(null);
+  const [cardActionLoading, setCardActionLoading] = useState<string | null>(null);
   const { toast } = useToast();
 
   const refresh = useCallback(async () => {
@@ -111,6 +112,26 @@ export default function DashboardPage() {
   const handleOpenDetail = (projectId: string) => {
     setSelectedProjectId(projectId);
     setShowDetailSheet(true);
+  };
+
+  const handleCardAction = async (projectId: string, envId: string, action: 'start' | 'stop') => {
+    setCardActionLoading(envId);
+    try {
+      const result = await apiFetch<{ ok: boolean; error?: string }>(
+        `/api/projects/${projectId}/environments/${envId}/${action}`,
+        { method: 'POST' }
+      );
+      if (result.ok === false && result.error) {
+        toast({ title: `${action} failed`, description: result.error, variant: 'destructive', duration: 5000 });
+      } else {
+        toast({ title: `${action === 'start' ? 'Started' : 'Stopped'}`, duration: 2000 });
+      }
+      refresh();
+    } catch (e: any) {
+      toast({ title: `${action} failed`, description: e.message, variant: 'destructive', duration: 5000 });
+    } finally {
+      setCardActionLoading(null);
+    }
   };
 
   // Count stats
@@ -184,6 +205,8 @@ export default function DashboardPage() {
                   project={project}
                   onOpen={() => handleOpenDetail(project.id)}
                   onDelete={() => setDeleteProject(project)}
+                  onAction={(envId, action) => handleCardAction(project.id, envId, action)}
+                  actionLoading={cardActionLoading}
                 />
               ))}
             </AnimatePresence>
@@ -266,13 +289,19 @@ function ProjectCard({
   project,
   onOpen,
   onDelete,
+  onAction,
+  actionLoading,
 }: {
   project: Project;
   onOpen: () => void;
   onDelete: () => void;
+  onAction: (envId: string, action: 'start' | 'stop') => void;
+  actionLoading: string | null;
 }) {
   const runningCount = project.environments.filter(e => e.status === 'running').length;
   const totalCount = project.environments.length;
+  const allRunning = totalCount > 0 && runningCount === totalCount;
+  const allStopped = totalCount > 0 && runningCount === 0;
 
   return (
     <motion.div
@@ -285,7 +314,7 @@ function ProjectCard({
       <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-border/50 hover:border-emerald-500/30" onClick={onOpen}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3" onClick={onOpen}>
               <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center text-2xl shrink-0">
                 {project.icon}
               </div>
@@ -294,50 +323,130 @@ function ProjectCard({
                 <p className="text-xs text-muted-foreground truncate max-w-[200px]">{project.path}</p>
               </div>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
-                  <MoreVertical className="h-4 w-4" />
+            <div className="flex items-center gap-1">
+              {/* Quick Start/Stop All button */}
+              {totalCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-8 w-8 ${allRunning ? 'text-red-500 hover:text-red-600 hover:bg-red-500/10' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    project.environments.forEach(env => {
+                      if (allRunning && env.status === 'running') {
+                        onAction(env.id, 'stop');
+                      } else if (!allRunning && env.status !== 'running') {
+                        onAction(env.id, 'start');
+                      }
+                    });
+                  }}
+                  disabled={!!actionLoading}
+                  title={allRunning ? 'Stop All' : runningCount > 0 ? 'Start Remaining' : 'Start All'}
+                >
+                  {actionLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : allRunning ? (
+                    <Square className="h-4 w-4" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpen(); }}>
-                  <Settings className="h-4 w-4 mr-2" /> Manage
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive">
-                  <Trash2 className="h-4 w-4 mr-2" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpen(); }}>
+                    <Settings className="h-4 w-4 mr-2" /> Manage
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
           {project.description && (
             <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{project.description}</p>
           )}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 flex-wrap">
-              {totalCount > 0 ? (
-                <>
-                  <Badge variant={runningCount > 0 ? 'default' : 'secondary'} className={runningCount > 0 ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/15' : ''}>
-                    <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${runningCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
-                    {runningCount}/{totalCount} running
-                  </Badge>
-                  {project.environments.map(env => (
-                    <Badge key={env.id} variant="outline" className="text-xs font-mono">
-                      {env.name}:{env.port}
-                    </Badge>
-                  ))}
-                </>
-              ) : (
-                <Badge variant="outline" className="text-amber-600 border-amber-500/20">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Not configured
+          {totalCount > 0 ? (
+            <div className="space-y-2">
+              {/* Quick toggle per environment */}
+              <div className="flex flex-col gap-1.5">
+                {project.environments.map(env => {
+                  const isLoading = actionLoading === env.id;
+                  return (
+                    <div key={env.id} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`h-2 w-2 rounded-full shrink-0 ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+                        <span className="text-sm font-medium capitalize truncate">{env.name}</span>
+                        <span className="text-xs text-muted-foreground font-mono shrink-0">:{env.port}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {env.status === 'running' && (
+                          <a
+                            href={`http://localhost:${env.port}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-600 hover:text-emerald-700"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Open in browser"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 px-2 text-xs gap-1 ${env.status === 'running' ? 'text-red-500 hover:text-red-600 hover:bg-red-500/10' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAction(env.id, env.status === 'running' ? 'stop' : 'start');
+                          }}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : env.status === 'running' ? (
+                            <>
+                              <Square className="h-3 w-3" />
+                              <span className="hidden sm:inline">Stop</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-3 w-3" />
+                              <span className="hidden sm:inline">Start</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Summary badge */}
+              <div className="flex items-center gap-2 pt-1">
+                <Badge variant={runningCount > 0 ? 'default' : 'secondary'} className={runningCount > 0 ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : ''}>
+                  <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${runningCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
+                  {runningCount}/{totalCount} running
                 </Badge>
-              )}
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground ml-auto group-hover:translate-x-0.5 transition-transform" />
+              </div>
             </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-          </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className="text-amber-600 border-amber-500/20">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Not configured
+              </Badge>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>
