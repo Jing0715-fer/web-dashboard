@@ -452,35 +452,35 @@ export default function DashboardPage() {
 
       {/* Stats Bar - Card style */}
       <div className="border-b bg-muted/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="flex items-center gap-3 bg-background/80 rounded-xl px-4 py-2.5 border border-border/40 shadow-sm">
-              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Package className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="flex items-center gap-2.5 bg-background/80 rounded-lg px-3 py-2 border border-border/40 shadow-sm">
+              <div className="h-7 w-7 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Package className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground leading-none">Projects</p>
-                <p className="text-lg font-bold leading-tight">{totalProjects}</p>
+                <p className="text-[11px] text-muted-foreground leading-none">Projects</p>
+                <p className="text-base font-bold leading-tight">{totalProjects}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-background/80 rounded-xl px-4 py-2.5 border border-border/40 shadow-sm">
-              <div className="h-8 w-8 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
-                <Globe className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            <div className="flex items-center gap-2.5 bg-background/80 rounded-lg px-3 py-2 border border-border/40 shadow-sm">
+              <div className="h-7 w-7 rounded-md bg-teal-500/10 flex items-center justify-center shrink-0">
+                <Globe className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground leading-none">Environments</p>
-                <p className="text-lg font-bold leading-tight">{totalEnvs}</p>
+                <p className="text-[11px] text-muted-foreground leading-none">Environments</p>
+                <p className="text-base font-bold leading-tight">{totalEnvs}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-background/80 rounded-xl px-4 py-2.5 border border-border/40 shadow-sm">
-              <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                <Activity className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <div className="flex items-center gap-2.5 bg-background/80 rounded-lg px-3 py-2 border border-border/40 shadow-sm">
+              <div className="h-7 w-7 rounded-md bg-green-500/10 flex items-center justify-center shrink-0">
+                <Activity className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground leading-none">Running</p>
+                <p className="text-[11px] text-muted-foreground leading-none">Running</p>
                 <div className="flex items-center gap-1.5">
-                  <p className="text-lg font-bold leading-tight text-emerald-600 dark:text-emerald-400">{runningEnvs}</p>
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-base font-bold leading-tight text-emerald-600 dark:text-emerald-400">{runningEnvs}</p>
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
               </div>
             </div>
@@ -489,7 +489,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -523,7 +523,7 @@ export default function DashboardPage() {
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               <AnimatePresence mode="popLayout">
                 {filteredProjects.map((project) => (
                   <ProjectCard
@@ -1003,7 +1003,7 @@ function LlmSettingsDialog({
           {isCustomProvider && (
             <div className="space-y-2">
               <Label htmlFor="model" className="text-sm font-medium">Model</Label>
-              {(provider === 'anthropic' || provider === 'claude-code') ? (
+              {provider === 'anthropic' ? (
                 <Select value={model} onValueChange={(val) => { setModel(val); setTestResult(null); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a Claude model" />
@@ -1055,7 +1055,7 @@ function LlmSettingsDialog({
                   onChange={(e) => { setModel(e.target.value); setTestResult(null); }}
                 />
               )}
-              {model === '__custom__' && (provider === 'anthropic' || provider === 'claude-code') && (
+              {model === '__custom__' && provider === 'anthropic' && (
                 <Input
                   placeholder="claude-custom-model-name"
                   value={model === '__custom__' ? '' : model}
@@ -1169,19 +1169,19 @@ function ProjectCard({
           hasRunning ? 'bg-gradient-to-b from-emerald-500 to-teal-500' : 'bg-muted-foreground/20'
         }`} />
 
-        <CardHeader className="pb-3 pl-5">
+        <CardHeader className="pb-2 pl-4">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
+            <div className="flex items-center gap-2.5">
+              <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${
                 hasRunning
                   ? 'bg-gradient-to-br from-emerald-500/15 to-teal-500/15 border border-emerald-500/20'
                   : 'bg-muted/80 border border-border/50'
               }`}>
-                <ProjectIcon icon={project.icon} className={`h-5 w-5 ${hasRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+                <ProjectIcon icon={project.icon} className={`h-4 w-4 ${hasRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold text-base truncate">{project.name}</h3>
-                <p className="text-xs text-muted-foreground truncate max-w-[220px] font-mono">{project.path}</p>
+                <h3 className="font-semibold text-sm truncate">{project.name}</h3>
+                <p className="text-[11px] text-muted-foreground truncate max-w-[220px] font-mono">{project.path}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -1190,7 +1190,7 @@ function ProjectCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`h-8 w-8 ${allRunning ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'}`}
+                  className={`h-7 w-7 ${allRunning ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     project.environments.forEach(env => {
@@ -1205,18 +1205,18 @@ function ProjectCard({
                   title={allRunning ? 'Stop All' : runningCount > 0 ? 'Start Remaining' : 'Start All'}
                 >
                   {actionLoading.size > 0 ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : allRunning ? (
-                    <Square className="h-4 w-4" />
+                    <Square className="h-3.5 w-3.5" />
                   ) : (
-                    <Play className="h-4 w-4" />
+                    <Play className="h-3.5 w-3.5" />
                   )}
                 </Button>
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                    <MoreVertical className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -1231,24 +1231,24 @@ function ProjectCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-0 pl-5">
+        <CardContent className="pt-0 pl-4 pb-3">
           {project.description && (
-            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{project.description}</p>
+            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{project.description}</p>
           )}
           {totalCount > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {/* Quick toggle per environment */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-0.5">
                 {project.environments.map(env => {
                   const isLoading = actionLoading.has(env.id);
                   return (
                     <div
                       key={env.id}
-                      className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 -mx-1.5 hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`h-2 w-2 rounded-full shrink-0 ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
-                        <span className="text-sm font-medium truncate">{env.name === 'production' ? 'Prod' : env.name === 'development' ? 'Dev' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+                        <span className="text-xs font-medium truncate">{env.name === 'production' ? 'Prod' : env.name === 'development' ? 'Dev' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
                         <InlinePortEditor
                           projectId={project.id}
                           envId={env.id}
@@ -1256,7 +1256,7 @@ function ProjectCard({
                           onSaved={onPortChange}
                         />
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         {env.status === 'running' && (
                           <>
                             <a
@@ -1267,7 +1267,7 @@ function ProjectCard({
                               onClick={(e) => e.stopPropagation()}
                               title="Open localhost"
                             >
-                              <ExternalLink className="h-3.5 w-3.5" />
+                              <ExternalLink className="h-3 w-3" />
                             </a>
                             {lanIP && (
                               <CopyableUrl url={`http://${lanIP}:${env.port}`} label="Copy LAN URL" />
@@ -1277,7 +1277,7 @@ function ProjectCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={`h-7 px-2 text-xs gap-1 ${env.status === 'running' ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'}`}
+                          className={`h-6 px-1.5 text-[11px] gap-0.5 ${env.status === 'running' ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             onAction(env.id, env.status === 'running' ? 'stop' : 'start');
@@ -1285,15 +1285,15 @@ function ProjectCard({
                           disabled={isLoading}
                         >
                           {isLoading ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
                           ) : env.status === 'running' ? (
                             <>
-                              <Square className="h-3 w-3" />
+                              <Square className="h-2.5 w-2.5" />
                               <span className="hidden sm:inline">Stop</span>
                             </>
                           ) : (
                             <>
-                              <Play className="h-3 w-3" />
+                              <Play className="h-2.5 w-2.5" />
                               <span className="hidden sm:inline">Start</span>
                             </>
                           )}
@@ -1304,35 +1304,35 @@ function ProjectCard({
                 })}
               </div>
               {/* Summary badge */}
-              <div className="flex items-center gap-2 pt-1">
-                <Badge variant={runningCount > 0 ? 'default' : 'secondary'} className={runningCount > 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : ''}>
-                  <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${runningCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
+              <div className="flex items-center gap-2 pt-0.5">
+                <Badge variant={runningCount > 0 ? 'default' : 'secondary'} className={`text-[11px] px-2 py-0 ${runningCount > 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : ''}`}>
+                  <div className={`h-1 w-1 rounded-full mr-1 ${runningCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
                   {runningCount}/{totalCount} running
                 </Badge>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground ml-auto group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight className="h-3 w-3 text-muted-foreground ml-auto group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
           ) : (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/20">
-                  <AlertCircle className="h-3 w-3 mr-1" />
+                <Badge variant="outline" className="text-[11px] text-amber-600 dark:text-amber-400 border-amber-500/20">
+                  <AlertCircle className="h-2.5 w-2.5 mr-1" />
                   Not configured
                 </Badge>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-xs gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10"
+                  className="h-6 px-1.5 text-[11px] gap-0.5 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenToEnv();
                   }}
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-2.5 w-2.5" />
                   <span className="hidden sm:inline">Add Env</span>
                 </Button>
               </div>
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
             </div>
           )}
         </CardContent>
