@@ -53,7 +53,7 @@ Based on the project files, generate a JSON response with this exact structure:
 {
   "projectName": "string - a descriptive name for the project",
   "description": "string - brief description of what the project does",
-  "icon": "string - a single emoji that represents the project",
+  "icon": "string - a lucide-react icon name that represents the project (e.g., 'globe', 'code', 'database', 'smartphone', 'shopping-cart', 'layout', 'palette', 'cpu', 'book-open', 'music', 'gamepad-2', 'bar-chart', 'shield', 'heart', 'camera', 'map', 'cloud', 'terminal', 'rocket', 'puzzle')",
   "environments": [
     {
       "name": "test",
@@ -85,7 +85,7 @@ CRITICAL Rules:
    - PORT: the port number as a string
 6. Set appropriate env vars based on the project type
 7. Respond with ONLY valid JSON, no markdown or explanation
-8. The icon should be a single emoji that represents the project's purpose`;
+8. The icon should be a lucide-react icon name (e.g., 'globe', 'code', 'database', 'smartphone', 'terminal', 'rocket') that best represents the project's purpose`;
 
     const zai = await ZAI.create();
     const completion = await zai.chat.completions.create({

@@ -6,7 +6,11 @@ import {
   Plus, RefreshCw, FolderOpen, Server, Trash2, Play, Square,
   RotateCcw, Settings, Terminal, Sparkles, ExternalLink,
   ChevronRight, Clock, Globe, X, Loader2, Edit3, Check,
-  AlertCircle, Package, MoreVertical, Info, Zap, Activity
+  AlertCircle, Package, MoreVertical, Info, Zap, Activity,
+  Code, Database, Smartphone, ShoppingCart, Layout, Palette,
+  Cpu, BookOpen, Music, Gamepad2, BarChart3, Shield, Camera,
+  Map, Cloud, Rocket, Puzzle, Folder, Flame, Laptop, Atom,
+  type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -35,6 +39,41 @@ import {
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
+
+// ============ Icon Registry ============
+const ICON_MAP: Record<string, LucideIcon> = {
+  'folder': Folder,
+  'globe': Globe,
+  'code': Code,
+  'database': Database,
+  'smartphone': Smartphone,
+  'shopping-cart': ShoppingCart,
+  'layout': Layout,
+  'palette': Palette,
+  'cpu': Cpu,
+  'book-open': BookOpen,
+  'music': Music,
+  'gamepad-2': Gamepad2,
+  'bar-chart': BarChart3,
+  'shield': Shield,
+  'camera': Camera,
+  'map': Map,
+  'cloud': Cloud,
+  'terminal': Terminal,
+  'rocket': Rocket,
+  'puzzle': Puzzle,
+  'package': Package,
+  'zap': Zap,
+  'laptop': Laptop,
+  'atom': Atom,
+  'flame': Flame,
+  'server': Server,
+};
+
+function ProjectIcon({ icon, className }: { icon: string; className?: string }) {
+  const IconComponent = ICON_MAP[icon] || ICON_MAP['folder'];
+  return <IconComponent className={className} />;
+}
 
 // ============ Types ============
 interface Environment {
@@ -470,16 +509,16 @@ function ProjectCard({
         <CardHeader className="pb-3 pl-5">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className={`h-11 w-11 rounded-xl flex items-center justify-center text-2xl shrink-0 shadow-sm ${
+              <div className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
                 hasRunning
-                  ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/20'
-                  : 'bg-gradient-to-br from-muted to-muted/50'
+                  ? 'bg-gradient-to-br from-emerald-500/15 to-teal-500/15 border border-emerald-500/20'
+                  : 'bg-muted/80 border border-border/50'
               }`}>
-                {project.icon}
+                <ProjectIcon icon={project.icon} className={`h-5 w-5 ${hasRunning ? 'text-emerald-600' : 'text-muted-foreground'}`} />
               </div>
               <div className="min-w-0">
                 <h3 className="font-semibold text-base truncate">{project.name}</h3>
-                <p className="text-xs text-muted-foreground truncate max-w-[200px]">{project.path}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[220px] font-mono">{project.path}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -546,7 +585,7 @@ function ProjectCard({
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <div className={`h-2 w-2 rounded-full shrink-0 ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
-                        <span className="text-sm font-medium capitalize truncate">{env.name}</span>
+                        <span className="text-sm font-medium truncate">{env.name === 'production' ? 'Prod' : env.name === 'development' ? 'Dev' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
                         <InlinePortEditor
                           projectId={project.id}
                           envId={env.id}
@@ -888,8 +927,8 @@ function ProjectDetailSheet({
         <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
           <SheetHeader className="px-6 pt-6 pb-4 border-b">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center text-3xl">
-                {project.icon}
+              <div className="h-12 w-12 rounded-xl bg-muted/80 border border-border/50 flex items-center justify-center">
+                <ProjectIcon icon={project.icon} className="h-6 w-6 text-muted-foreground" />
               </div>
               <div className="min-w-0">
                 <SheetTitle className="text-lg">{project.name}</SheetTitle>
@@ -934,7 +973,7 @@ function ProjectDetailSheet({
                           <div className="flex items-center gap-3">
                             <div className={`h-2.5 w-2.5 rounded-full ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
                             <div>
-                              <span className="font-medium text-sm capitalize">{env.name}</span>
+                              <span className="font-medium text-sm">{env.name === 'production' ? 'Production' : env.name === 'development' ? 'Development' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
                               <span className="text-xs text-muted-foreground ml-2">:{env.port}</span>
                             </div>
                           </div>
@@ -1059,10 +1098,10 @@ function EnvironmentPanel({
         <div className="flex items-center gap-3">
           <div className={`h-3 w-3 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
           <div>
-            <span className="font-medium text-sm capitalize">{env.name}</span>
+            <span className="font-medium text-sm">{env.name === 'production' ? 'Production' : env.name === 'development' ? 'Development' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
             <span className="text-xs text-muted-foreground ml-2">Port {env.port}</span>
           </div>
-          <Badge variant={isRunning ? 'default' : 'secondary'} className={isRunning ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs' : 'text-xs'}>
+          <Badge variant={isRunning ? 'default' : 'secondary'} className={`text-xs ${isRunning ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : ''} ${!isRunning && env.name === 'production' ? 'border-orange-500/20 text-orange-600' : ''}`}>
             {isRunning ? 'Running' : 'Stopped'}
           </Badge>
         </div>

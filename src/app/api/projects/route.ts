@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         name: projectName,
         path,
         description: description || '',
-        icon: icon || '📦',
+        icon: icon || 'folder',
       },
       include: { environments: true },
     });
