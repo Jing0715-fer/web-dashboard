@@ -10,7 +10,7 @@ import {
   Code, Database, Smartphone, ShoppingCart, Layout, Palette,
   Cpu, BookOpen, Music, Gamepad2, BarChart3, Shield, Camera,
   Map, Cloud, Rocket, Puzzle, Folder, Flame, Laptop, Atom,
-  Key, Wifi, WifiOff, Eye, EyeOff, TestTube,
+  Key, Wifi, WifiOff, Eye, EyeOff, TestTube, Copy,
   type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -109,12 +109,54 @@ interface LlmConfigState {
   hasApiKey: boolean;
 }
 
+interface NetworkInfo {
+  lanIPs: Array<{ address: string; interface: string; family: string }>;
+  primaryIP: string;
+  hostname: string;
+}
+
 // ============ API Helpers ============
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, options);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
+}
+
+// ============ Copyable URL ============
+function CopyableUrl({ url, label }: { url: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast({ title: 'URL copied', description: url, duration: 2000 });
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast({ title: 'Failed to copy', variant: 'destructive' });
+    }
+  };
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className={`transition-colors ${copied ? 'text-emerald-600' : 'text-muted-foreground hover:text-foreground'}`}
+            onClick={handleCopy}
+          >
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
+          <p>{label || 'Copy URL'}: <code className="font-mono text-xs">{url}</code></p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
 
 // ============ Inline Port Editor ============
@@ -237,6 +279,7 @@ export default function DashboardPage() {
   const [cardActionLoading, setCardActionLoading] = useState<string | null>(null);
   const [showLlmSettings, setShowLlmSettings] = useState(false);
   const [llmConfig, setLlmConfig] = useState<LlmConfigState | null>(null);
+  const [lanIP, setLanIP] = useState('');
   const { toast } = useToast();
 
   const refresh = useCallback(async () => {
@@ -259,12 +302,22 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchNetworkInfo = useCallback(async () => {
+    try {
+      const data = await apiFetch<NetworkInfo>('/api/network-info');
+      setLanIP(data.primaryIP || '');
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     refresh();
     fetchLlmConfig();
+    fetchNetworkInfo();
     const interval = setInterval(refresh, 8000);
     return () => clearInterval(interval);
-  }, [refresh, fetchLlmConfig]);
+  }, [refresh, fetchLlmConfig, fetchNetworkInfo]);
 
   const handleDeleteProject = async () => {
     if (!deleteProject) return;
@@ -419,6 +472,7 @@ export default function DashboardPage() {
                 <ProjectCard
                   key={project.id}
                   project={project}
+                  lanIP={lanIP}
                   onOpen={() => handleOpenDetail(project.id)}
                   onOpenToEnv={() => handleOpenDetailToEnv(project.id)}
                   onDelete={() => setDeleteProject(project)}
@@ -436,10 +490,18 @@ export default function DashboardPage() {
       <footer className="border-t mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-xs text-muted-foreground">
           <span>Web Dashboard v2.0</span>
-          <span className="flex items-center gap-1.5">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Auto-refresh every 8s
-          </span>
+          <div className="flex items-center gap-4">
+            {lanIP && (
+              <span className="flex items-center gap-1.5">
+                <Wifi className="h-3 w-3 text-emerald-500" />
+                LAN: <code className="font-mono text-emerald-600">{lanIP}</code>
+              </span>
+            )}
+            <span className="flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Auto-refresh every 8s
+            </span>
+          </div>
         </div>
       </footer>
 
@@ -469,6 +531,7 @@ export default function DashboardPage() {
         }}
         onProjectChanged={refresh}
         llmReady={isLlmReady}
+        lanIP={lanIP}
       />
 
       {/* Delete Confirmation */}
@@ -736,6 +799,7 @@ function EmptyState({ onAddProject }: { onAddProject: () => void }) {
 // ============ Project Card ============
 function ProjectCard({
   project,
+  lanIP,
   onOpen,
   onOpenToEnv,
   onDelete,
@@ -744,6 +808,7 @@ function ProjectCard({
   actionLoading,
 }: {
   project: Project;
+  lanIP: string;
   onOpen: () => void;
   onOpenToEnv: () => void;
   onDelete: () => void;
@@ -864,16 +929,21 @@ function ProjectCard({
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {env.status === 'running' && (
-                          <a
-                            href={`http://localhost:${env.port}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-emerald-600 hover:text-emerald-700"
-                            onClick={(e) => e.stopPropagation()}
-                            title="Open in browser"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
+                          <>
+                            <a
+                              href={`http://localhost:${env.port}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-600 hover:text-emerald-700"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Open localhost"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                            {lanIP && (
+                              <CopyableUrl url={`http://${lanIP}:${env.port}`} label="Copy LAN URL" />
+                            )}
+                          </>
                         )}
                         <Button
                           variant="ghost"
@@ -1112,12 +1182,14 @@ function ProjectDetailSheet({
   onOpenChange,
   onProjectChanged,
   llmReady,
+  lanIP,
 }: {
   projectId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProjectChanged: () => void;
   llmReady: boolean;
+  lanIP: string;
 }) {
   const [project, setProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -1276,9 +1348,14 @@ function ProjectDetailSheet({
                               <span className="text-xs text-muted-foreground ml-2">:{env.port}</span>
                             </div>
                           </div>
-                          <Badge variant={env.status === 'running' ? 'default' : 'secondary'} className={env.status === 'running' ? 'bg-emerald-500/10 text-emerald-600' : ''}>
-                            {env.status === 'running' ? 'Running' : 'Stopped'}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            {env.status === 'running' && lanIP && (
+                              <CopyableUrl url={`http://${lanIP}:${env.port}`} label="Copy LAN URL" />
+                            )}
+                            <Badge variant={env.status === 'running' ? 'default' : 'secondary'} className={env.status === 'running' ? 'bg-emerald-500/10 text-emerald-600' : ''}>
+                              {env.status === 'running' ? 'Running' : 'Stopped'}
+                            </Badge>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1344,6 +1421,7 @@ function ProjectDetailSheet({
                       key={env.id}
                       environment={env}
                       projectPath={project.path}
+                      lanIP={lanIP}
                       actionLoading={actionLoading}
                       onAction={(action) => handleAction(env.id, action)}
                       onEdit={() => { setEditEnv(env); setShowEnvDialog(true); }}
@@ -1384,6 +1462,7 @@ function ProjectDetailSheet({
 function EnvironmentPanel({
   environment: env,
   projectPath,
+  lanIP,
   actionLoading,
   onAction,
   onEdit,
@@ -1392,6 +1471,7 @@ function EnvironmentPanel({
 }: {
   environment: Environment;
   projectPath: string;
+  lanIP: string;
   actionLoading: string | null;
   onAction: (action: 'start' | 'stop' | 'restart') => void;
   onEdit: () => void;
@@ -1463,17 +1543,35 @@ function EnvironmentPanel({
         )}
 
         {isRunning && (
-          <div>
-            <a
-              href={`http://localhost:${env.port}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink className="h-3 w-3" />
-              Open http://localhost:{env.port}
-            </a>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <a
+                href={`http://localhost:${env.port}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="h-3 w-3" />
+                localhost:{env.port}
+              </a>
+              <CopyableUrl url={`http://localhost:${env.port}`} label="Copy URL" />
+            </div>
+            {lanIP && (
+              <div className="flex items-center gap-2">
+                <a
+                  href={`http://${lanIP}:${env.port}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Wifi className="h-3 w-3" />
+                  {lanIP}:{env.port}
+                </a>
+                <CopyableUrl url={`http://${lanIP}:${env.port}`} label="Copy LAN URL" />
+              </div>
+            )}
           </div>
         )}
 

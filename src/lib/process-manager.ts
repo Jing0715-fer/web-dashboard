@@ -172,6 +172,7 @@ export async function startProcess(
       ...process.env,
       ...envVars,
       PORT: String(port),
+      HOST: '0.0.0.0', // Bind to all interfaces for LAN access
     };
 
     const { useShell, command, args } = parseCommand(cmd);

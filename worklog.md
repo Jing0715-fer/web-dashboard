@@ -121,3 +121,46 @@ Stage Summary:
 - API key is securely masked in responses and only updated when changed
 - Visual status indicators throughout the UI (header, add project dialog, detail sheet)
 - No emoji icons remaining in codebase
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Support LAN access for all projects
+
+Work Log:
+- Created /api/network-info API endpoint:
+  - Uses Node.js os.networkInterfaces() to detect all LAN IP addresses
+  - Tries to determine the primary/default gateway interface via `ip route show default`
+  - Returns lanIPs array, primaryIP, and hostname
+- Updated process-manager.ts:
+  - Added `HOST: '0.0.0.0'` to environment variables when spawning processes
+  - This ensures all started services bind to all network interfaces, making them accessible from LAN
+- Added CopyableUrl component:
+  - Reusable copy-to-clipboard button with tooltip showing full URL
+  - Shows check icon after successful copy, reverts to copy icon after 1.5s
+  - Toast notification on copy success/failure
+- Updated DashboardPage:
+  - Added lanIP state fetched from /api/network-info
+  - Footer now shows "LAN: <IP>" with WiFi icon when LAN IP is detected
+  - Passes lanIP to ProjectCard and ProjectDetailSheet
+- Updated ProjectCard:
+  - Accepts lanIP prop
+  - Shows CopyableUrl button next to ExternalLink for running environments (copy LAN URL)
+- Updated ProjectDetailSheet:
+  - Accepts lanIP prop
+  - Overview tab: CopyableUrl buttons on environment summary rows
+  - Passes lanIP to EnvironmentPanel
+- Updated EnvironmentPanel:
+  - Accepts lanIP prop
+  - Shows both localhost and LAN URL links when environment is running:
+    - localhost link with ExternalLink icon + CopyableUrl button
+    - LAN link with Wifi icon + CopyableUrl button
+- All lint checks pass
+- Browser verified: LAN IP (21.0.13.113) shown in footer, LAN URLs displayed with copy buttons on project cards and environment panels
+
+Stage Summary:
+- All projects now bind to 0.0.0.0 for LAN accessibility
+- LAN IP auto-detected and displayed in footer
+- Running environments show both localhost and LAN URLs
+- Copy-to-clipboard buttons for easy URL sharing
+- Full end-to-end tested with Agent Browser
