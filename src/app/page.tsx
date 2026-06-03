@@ -408,10 +408,10 @@ export default function DashboardPage() {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-500/20 dark:shadow-emerald-500/10">
-              <Server className="h-5 w-5 text-white" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-500/20 dark:shadow-emerald-500/10">
+              <Server className="h-4 w-4 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">Web Dashboard</h1>
@@ -552,7 +552,7 @@ export default function DashboardPage() {
 
       {/* Footer */}
       <footer className="border-t mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between text-xs text-muted-foreground">
           <span>Web Dashboard v2.0</span>
           <div className="flex items-center gap-4">
             {lanIP && (
@@ -1159,17 +1159,17 @@ function ProjectCard({
       transition={{ duration: 0.2 }}
     >
       <Card
-        className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-border/50 hover:-translate-y-0.5 relative overflow-hidden ${
+        className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-border/50 hover:-translate-y-0.5 relative overflow-hidden py-3 gap-1.5 ${
           hasRunning ? 'hover:border-emerald-500/30' : 'hover:border-border'
         }`}
         onClick={onOpen}
       >
         {/* Left accent border */}
-        <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl transition-colors duration-300 ${
+        <div className={`absolute left-0 top-0 bottom-0 w-0.5 rounded-l-xl transition-colors duration-300 ${
           hasRunning ? 'bg-gradient-to-b from-emerald-500 to-teal-500' : 'bg-muted-foreground/20'
         }`} />
 
-        <CardHeader className="pb-2 pl-4">
+        <CardHeader className="pb-1.5 pl-3.5 pr-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2.5">
               <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${
@@ -1231,20 +1231,20 @@ function ProjectCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-0 pl-4 pb-3">
+        <CardContent className="pt-0 pl-3.5 pr-3 pb-2.5">
           {project.description && (
-            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{project.description}</p>
+            <p className="text-[11px] text-muted-foreground mb-1.5 line-clamp-2">{project.description}</p>
           )}
           {totalCount > 0 ? (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {/* Quick toggle per environment */}
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-px">
                 {project.environments.map(env => {
                   const isLoading = actionLoading.has(env.id);
                   return (
                     <div
                       key={env.id}
-                      className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 -mx-1.5 hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between gap-2 rounded px-1.5 py-0.5 -mx-1.5 hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
                         <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
@@ -1276,26 +1276,21 @@ function ProjectCard({
                         )}
                         <Button
                           variant="ghost"
-                          size="sm"
-                          className={`h-6 px-1.5 text-[11px] gap-0.5 ${env.status === 'running' ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'}`}
+                          size="icon"
+                          className={`h-5 w-5 ${env.status === 'running' ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             onAction(env.id, env.status === 'running' ? 'stop' : 'start');
                           }}
                           disabled={isLoading}
+                          title={env.status === 'running' ? 'Stop' : 'Start'}
                         >
                           {isLoading ? (
                             <Loader2 className="h-2.5 w-2.5 animate-spin" />
                           ) : env.status === 'running' ? (
-                            <>
-                              <Square className="h-2.5 w-2.5" />
-                              <span className="hidden sm:inline">Stop</span>
-                            </>
+                            <Square className="h-2.5 w-2.5" />
                           ) : (
-                            <>
-                              <Play className="h-2.5 w-2.5" />
-                              <span className="hidden sm:inline">Start</span>
-                            </>
+                            <Play className="h-2.5 w-2.5" />
                           )}
                         </Button>
                       </div>
@@ -1303,33 +1298,32 @@ function ProjectCard({
                   );
                 })}
               </div>
-              {/* Summary badge */}
-              <div className="flex items-center gap-2 pt-0.5">
-                <Badge variant={runningCount > 0 ? 'default' : 'secondary'} className={`text-[11px] px-2 py-0 ${runningCount > 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : ''}`}>
-                  <div className={`h-1 w-1 rounded-full mr-1 ${runningCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
+              {/* Summary row */}
+              <div className="flex items-center justify-between pt-0.5">
+                <span className={`text-[11px] font-medium ${runningCount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                   {runningCount}/{totalCount} running
-                </Badge>
-                <ChevronRight className="h-3 w-3 text-muted-foreground ml-auto group-hover:translate-x-0.5 transition-transform" />
+                </span>
+                <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
           ) : (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[11px] text-amber-600 dark:text-amber-400 border-amber-500/20">
-                  <AlertCircle className="h-2.5 w-2.5 mr-1" />
+                <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
                   Not configured
-                </Badge>
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-1.5 text-[11px] gap-0.5 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10"
+                  className="h-5 px-1.5 text-[11px] gap-0.5 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenToEnv();
                   }}
                 >
                   <Plus className="h-2.5 w-2.5" />
-                  <span className="hidden sm:inline">Add Env</span>
+                  Add
                 </Button>
               </div>
               <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
@@ -1631,18 +1625,18 @@ function ProjectDetailSheet({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col">
-          <SheetHeader className="px-6 pt-6 pb-4 border-b">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-muted animate-pulse" />
-              <div className="space-y-2">
-                <div className="h-5 w-40 bg-muted rounded animate-pulse" />
-                <div className="h-3 w-60 bg-muted rounded animate-pulse" />
+          <SheetHeader className="px-5 pt-5 pb-3 border-b">
+            <div className="flex items-center gap-2.5">
+              <div className="h-10 w-10 rounded-lg bg-muted animate-pulse" />
+              <div className="space-y-1.5">
+                <div className="h-4 w-36 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-52 bg-muted rounded animate-pulse" />
               </div>
             </div>
           </SheetHeader>
-          <div className="flex-1 px-6 py-4 space-y-4">
-            <div className="h-20 bg-muted rounded-lg animate-pulse" />
-            <div className="h-32 bg-muted rounded-lg animate-pulse" />
+          <div className="flex-1 px-5 py-3 space-y-3">
+            <div className="h-16 bg-muted rounded-lg animate-pulse" />
+            <div className="h-28 bg-muted rounded-lg animate-pulse" />
           </div>
         </SheetContent>
       </Sheet>
@@ -1722,28 +1716,28 @@ function ProjectDetailSheet({
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
-          <SheetHeader className="px-6 pt-6 pb-4 border-b">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-muted/80 border border-border/50 flex items-center justify-center">
-                <ProjectIcon icon={project.icon} className="h-6 w-6 text-muted-foreground" />
+          <SheetHeader className="px-5 pt-5 pb-3 border-b">
+            <div className="flex items-center gap-2.5">
+              <div className="h-10 w-10 rounded-lg bg-muted/80 border border-border/50 flex items-center justify-center">
+                <ProjectIcon icon={project.icon} className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="min-w-0">
-                <SheetTitle className="text-lg">{project.name}</SheetTitle>
-                <p className="text-sm text-muted-foreground font-mono truncate">{project.path}</p>
+                <SheetTitle className="text-base">{project.name}</SheetTitle>
+                <p className="text-xs text-muted-foreground font-mono truncate">{project.path}</p>
               </div>
             </div>
           </SheetHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-            <div className="px-6 pt-2">
+            <div className="px-5 pt-2">
               <TabsList className="w-full">
                 <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
                 <TabsTrigger value="environments" className="flex-1">Environments</TabsTrigger>
               </TabsList>
             </div>
 
-            <TabsContent value="overview" className="flex-1 overflow-auto px-6 py-4">
-              <div className="space-y-6">
+            <TabsContent value="overview" className="flex-1 overflow-auto px-5 py-3">
+              <div className="space-y-4">
                 {project.description && (
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground mb-1">Description</h4>
@@ -1769,19 +1763,19 @@ function ProjectDetailSheet({
                   ) : (
                     <div className="space-y-2">
                       {project.environments.map(env => (
-                        <div key={env.id} className="flex items-center justify-between bg-muted/50 rounded-lg px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className={`h-2.5 w-2.5 rounded-full ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+                        <div key={env.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`h-2 w-2 rounded-full ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
                             <div>
                               <span className="font-medium text-sm">{env.name === 'production' ? 'Production' : env.name === 'development' ? 'Development' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
-                              <span className="text-xs text-muted-foreground ml-2">:{env.port}</span>
+                              <span className="text-xs text-muted-foreground ml-1.5">:{env.port}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             {env.status === 'running' && lanIP && (
                               <CopyableUrl url={`http://${lanIP}:${env.port}`} label="Copy LAN URL" />
                             )}
-                            <Badge variant={env.status === 'running' ? 'default' : 'secondary'} className={env.status === 'running' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : ''}>
+                            <Badge variant={env.status === 'running' ? 'default' : 'secondary'} className={`text-[11px] ${env.status === 'running' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : ''}`}>
                               {env.status === 'running' ? 'Running' : 'Stopped'}
                             </Badge>
                           </div>
@@ -1819,8 +1813,8 @@ function ProjectDetailSheet({
               </div>
             </TabsContent>
 
-            <TabsContent value="environments" className="flex-1 overflow-auto px-6 py-4">
-              <div className="space-y-4">
+            <TabsContent value="environments" className="flex-1 overflow-auto px-5 py-3">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">Environments</h4>
                   <Button size="sm" onClick={() => { setEditEnv(null); setShowEnvDialog(true); }} className="gap-1">
@@ -1936,43 +1930,41 @@ function EnvironmentPanel({
   try { envVars = JSON.parse(env.envVars); } catch { /* ignore */ }
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden">
+    <div className="rounded-lg border bg-card overflow-hidden">
       {/* Environment Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-muted/30">
-        <div className="flex items-center gap-3">
-          <div className={`h-3 w-3 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
-          <div>
-            <span className="font-medium text-sm">{env.name === 'production' ? 'Production' : env.name === 'development' ? 'Development' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
-            <span className="text-xs text-muted-foreground ml-2">Port {env.port}</span>
-          </div>
-          <Badge variant={isRunning ? 'default' : 'secondary'} className={`text-xs ${isRunning ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : ''} ${!isRunning && env.name === 'production' ? 'border-orange-500/20 text-orange-600 dark:text-orange-400' : ''}`}>
+      <div className="flex items-center justify-between px-3 py-2 bg-muted/30">
+        <div className="flex items-center gap-2">
+          <div className={`h-2 w-2 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+          <span className="font-medium text-sm">{env.name === 'production' ? 'Production' : env.name === 'development' ? 'Development' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
+          <span className="text-[11px] text-muted-foreground">:{env.port}</span>
+          <Badge variant={isRunning ? 'default' : 'secondary'} className={`text-[11px] px-1.5 py-0 ${isRunning ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : ''} ${!isRunning && env.name === 'production' ? 'border-orange-500/20 text-orange-600 dark:text-orange-400' : ''}`}>
             {isRunning ? 'Running' : 'Stopped'}
           </Badge>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <Button
-            variant="ghost" size="icon" className="h-8 w-8"
+            variant="ghost" size="icon" className="h-7 w-7"
             onClick={() => onViewLogs()} title="View Logs"
           >
-            <Terminal className="h-3.5 w-3.5" />
+            <Terminal className="h-3 w-3" />
           </Button>
           <Button
-            variant="ghost" size="icon" className="h-8 w-8"
+            variant="ghost" size="icon" className="h-7 w-7"
             onClick={onEdit} title="Edit Configuration"
           >
-            <Edit3 className="h-3.5 w-3.5" />
+            <Edit3 className="h-3 w-3" />
           </Button>
           <Button
-            variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+            variant="ghost" size="icon" className="h-7 w-7 text-destructive"
             onClick={onDelete} title="Delete Environment"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       </div>
 
       {/* Environment Body */}
-      <div className="px-4 py-3 space-y-3">
+      <div className="px-3 py-2 space-y-2">
         <div>
           <p className="text-xs text-muted-foreground mb-1">Start Command</p>
           <div className="flex items-center gap-2">
@@ -2030,7 +2022,7 @@ function EnvironmentPanel({
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-2 pt-1">
+        <div className="flex gap-1.5 pt-0.5">
           <Button
             size="sm"
             variant={isRunning ? 'outline' : 'default'}
