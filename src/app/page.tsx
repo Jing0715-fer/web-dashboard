@@ -11,6 +11,7 @@ import {
   Cpu, BookOpen, Music, Gamepad2, BarChart3, Shield, Camera,
   Map, Cloud, Rocket, Puzzle, Folder, Flame, Laptop, Atom,
   Search, Wifi, WifiOff, Eye, EyeOff, TestTube, Copy,
+  HeartPulse, Timer,
   type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -115,6 +117,48 @@ interface NetworkInfo {
   lanIPs: Array<{ address: string; interface: string; family: string }>;
   primaryIP: string;
   hostname: string;
+}
+
+interface ServiceHealth {
+  projectId: string;
+  projectName: string;
+  envId: string;
+  envName: string;
+  port: number;
+  status: 'running' | 'stopped';
+  httpStatus: number | null;
+  responseTime: number | null;
+  gatewayAccessible: boolean;
+}
+
+interface GatewayStatusData {
+  caddyRunning: boolean;
+  caddyVersion: string;
+  gatewayPort: number;
+  gatewayListening: boolean;
+  configValid: boolean;
+  uptime: number;
+  systemUptime: number;
+  memoryUsage: { total: number; used: number; free: number; percentage: number };
+  cpuUsage: number;
+  services: ServiceHealth[];
+  lastChecked: string;
+}
+
+function formatUptime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
 // ============ API Helpers ============
@@ -306,6 +350,8 @@ export default function DashboardPage() {
   const [showLlmSettings, setShowLlmSettings] = useState(false);
   const [llmConfig, setLlmConfig] = useState<LlmConfigState | null>(null);
   const [lanIP, setLanIP] = useState('');
+  const [showGatewayMonitor, setShowGatewayMonitor] = useState(false);
+  const [gatewayStatus, setGatewayStatus] = useState<GatewayStatusData | null>(null);
   const { toast } = useToast();
 
   const refresh = useCallback(async () => {
@@ -337,13 +383,24 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchGatewayStatus = useCallback(async () => {
+    try {
+      const data = await apiFetch<GatewayStatusData>('/api/gateway/status');
+      setGatewayStatus(data);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     refresh();
     fetchLlmConfig();
     fetchNetworkInfo();
+    fetchGatewayStatus();
     const interval = setInterval(refresh, 8000);
-    return () => clearInterval(interval);
-  }, [refresh, fetchLlmConfig, fetchNetworkInfo]);
+    const gatewayInterval = setInterval(fetchGatewayStatus, 15000);
+    return () => { clearInterval(interval); clearInterval(gatewayInterval); };
+  }, [refresh, fetchLlmConfig, fetchNetworkInfo, fetchGatewayStatus]);
 
   const handleDeleteProject = async () => {
     if (!deleteProject) return;
@@ -425,6 +482,23 @@ export default function DashboardPage() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => setShowGatewayMonitor(true)}
+                    className={gatewayStatus?.caddyRunning && gatewayStatus?.gatewayListening ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300' : 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300'}
+                  >
+                    <HeartPulse className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>{gatewayStatus?.caddyRunning ? 'Gateway Running - Click to monitor' : 'Gateway Status - Click to check'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setShowLlmSettings(true)}
                     className={isLlmReady ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300' : 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300'}
                   >
@@ -453,7 +527,7 @@ export default function DashboardPage() {
       {/* Stats Bar - Card style */}
       <div className="border-b bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-4 gap-2.5">
             <div className="flex items-center gap-2.5 bg-background/80 rounded-lg px-3 py-2 border border-border/40 shadow-sm">
               <div className="h-7 w-7 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <Package className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -484,6 +558,23 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+            <button
+              onClick={() => setShowGatewayMonitor(true)}
+              className="flex items-center gap-2.5 bg-background/80 rounded-lg px-3 py-2 border border-border/40 shadow-sm hover:border-emerald-500/30 transition-colors cursor-pointer text-left"
+            >
+              <div className={`h-7 w-7 rounded-md flex items-center justify-center shrink-0 ${gatewayStatus?.caddyRunning ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
+                <HeartPulse className={`h-3.5 w-3.5 ${gatewayStatus?.caddyRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground leading-none">Gateway</p>
+                <div className="flex items-center gap-1.5">
+                  <p className={`text-sm font-bold leading-tight ${gatewayStatus?.caddyRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {gatewayStatus?.caddyRunning ? 'Online' : gatewayStatus ? 'Offline' : '...'}
+                  </p>
+                  {gatewayStatus?.caddyRunning && <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                </div>
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -583,6 +674,14 @@ export default function DashboardPage() {
         open={showLlmSettings}
         onOpenChange={setShowLlmSettings}
         onConfigChanged={fetchLlmConfig}
+      />
+
+      {/* Gateway Monitor Dialog */}
+      <GatewayMonitorDialog
+        open={showGatewayMonitor}
+        onOpenChange={setShowGatewayMonitor}
+        gatewayStatus={gatewayStatus}
+        onRefresh={fetchGatewayStatus}
       />
 
       {/* Project Detail Sheet */}
@@ -2309,6 +2408,251 @@ function LogViewerDialog({
               Close
             </Button>
           </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============ Gateway Monitor Dialog ============
+function GatewayMonitorDialog({
+  open,
+  onOpenChange,
+  gatewayStatus,
+  onRefresh,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  gatewayStatus: GatewayStatusData | null;
+  onRefresh: () => void;
+}) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await onRefresh();
+    setTimeout(() => setRefreshing(false), 500);
+  };
+
+  const runningServices = gatewayStatus?.services.filter(s => s.status === 'running') || [];
+  const stoppedServices = gatewayStatus?.services.filter(s => s.status === 'stopped') || [];
+  const accessibleServices = runningServices.filter(s => s.gatewayAccessible);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <HeartPulse className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
+            Gateway Monitor
+          </DialogTitle>
+          <DialogDescription>
+            Real-time gateway and service health monitoring
+          </DialogDescription>
+        </DialogHeader>
+
+        {!gatewayStatus ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-4 py-3">
+            {/* Gateway Status Overview */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Caddy Status Card */}
+              <div className={`rounded-lg border p-3 ${gatewayStatus.caddyRunning ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`h-2 w-2 rounded-full ${gatewayStatus.caddyRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                  <span className="text-sm font-medium">Caddy Gateway</span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Process</span>
+                    <span className={gatewayStatus.caddyRunning ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
+                      {gatewayStatus.caddyRunning ? 'Running' : 'Stopped'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Port :{gatewayStatus.gatewayPort}</span>
+                    <span className={gatewayStatus.gatewayListening ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
+                      {gatewayStatus.gatewayListening ? 'Listening' : 'Not Listening'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Uptime</span>
+                    <span className="font-mono">{formatUptime(gatewayStatus.uptime)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Version</span>
+                    <span className="font-mono text-[11px]">{gatewayStatus.caddyVersion.split(' ')[0]}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* System Resources Card */}
+              <div className="rounded-lg border p-3 border-border/50 bg-muted/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-sm font-medium">System Resources</span>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">CPU</span>
+                      <span className={`font-mono font-medium ${gatewayStatus.cpuUsage > 80 ? 'text-red-500' : gatewayStatus.cpuUsage > 50 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {gatewayStatus.cpuUsage}%
+                      </span>
+                    </div>
+                    <Progress value={gatewayStatus.cpuUsage} className="h-1.5" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">Memory</span>
+                      <span className={`font-mono font-medium ${gatewayStatus.memoryUsage.percentage > 80 ? 'text-red-500' : gatewayStatus.memoryUsage.percentage > 50 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {gatewayStatus.memoryUsage.percentage}%
+                      </span>
+                    </div>
+                    <Progress value={gatewayStatus.memoryUsage.percentage} className="h-1.5" />
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {formatBytes(gatewayStatus.memoryUsage.used)} / {formatBytes(gatewayStatus.memoryUsage.total)}
+                    </p>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">System Uptime</span>
+                    <span className="font-mono">{formatUptime(gatewayStatus.systemUptime)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Service Health Summary */}
+            <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-sm font-medium">Service Health</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  {runningServices.length > 0 && (
+                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {runningServices.length} running
+                    </span>
+                  )}
+                  {stoppedServices.length > 0 && (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+                      {stoppedServices.length} stopped
+                    </span>
+                  )}
+                  {runningServices.length > 0 && (
+                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <Check className="h-3 w-3" />
+                      {accessibleServices.length}/{runningServices.length} accessible
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {gatewayStatus.services.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No services configured</p>
+              ) : (
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                  {gatewayStatus.services.map(service => (
+                    <div
+                      key={service.envId}
+                      className={`flex items-center justify-between rounded-md px-3 py-1.5 text-xs ${
+                        service.status === 'running'
+                          ? service.gatewayAccessible
+                            ? 'bg-emerald-500/5 border border-emerald-500/10'
+                            : 'bg-amber-500/5 border border-amber-500/10'
+                          : 'bg-muted/30 border border-border/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`h-2 w-2 rounded-full shrink-0 ${
+                          service.status === 'running'
+                            ? service.gatewayAccessible
+                              ? 'bg-emerald-500 animate-pulse'
+                              : 'bg-amber-500'
+                            : 'bg-muted-foreground/30'
+                        }`} />
+                        <span className="font-medium">{service.projectName}</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="text-muted-foreground">{service.envName === 'production' ? 'Prod' : service.envName === 'development' ? 'Dev' : service.envName}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-muted-foreground">:{service.port}</span>
+                        {service.status === 'running' ? (
+                          <>
+                            {service.httpStatus !== null ? (
+                              <span className={`font-mono font-medium ${service.httpStatus < 400 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                HTTP {service.httpStatus}
+                              </span>
+                            ) : (
+                              <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Unreachable
+                              </span>
+                            )}
+                            {service.responseTime !== null && (
+                              <span className="flex items-center gap-1 text-muted-foreground font-mono">
+                                <Timer className="h-3 w-3" />
+                                {service.responseTime}ms
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] h-4">Stopped</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Gateway Config Info */}
+            <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-sm font-medium">Gateway Configuration</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
+                  <span className="text-muted-foreground">Listen Port</span>
+                  <span className="font-mono font-medium">:{gatewayStatus.gatewayPort}</span>
+                </div>
+                <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
+                  <span className="text-muted-foreground">Config Valid</span>
+                  <span className={gatewayStatus.configValid ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
+                    {gatewayStatus.configValid ? 'Yes' : 'No'}
+                  </span>
+                </div>
+                <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
+                  <span className="text-muted-foreground">Default Route</span>
+                  <span className="font-mono">:3000</span>
+                </div>
+                <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
+                  <span className="text-muted-foreground">Port Forward</span>
+                  <span className="font-mono">XTransformPort</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Last Checked */}
+            <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+              <span>Last checked: {new Date(gatewayStatus.lastChecked).toLocaleTimeString()}</span>
+              <span>Auto-refresh every 15s</span>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-1.5">
+            {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Refresh Now
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
