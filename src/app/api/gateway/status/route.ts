@@ -20,6 +20,21 @@ interface ServiceHealth {
   gatewayAccessible: boolean;
 }
 
+interface AgentGateway {
+  name: string;
+  displayName: string;
+  description: string;
+  port: number;
+  status: 'running' | 'stopped';
+  pid: number | null;
+  uptime: number;
+  memoryMB: number;
+  version: string;
+  httpStatus: number | null;
+  responseTime: number | null;
+  icon: string; // lucide icon name hint for frontend
+}
+
 interface GatewayStatus {
   caddyRunning: boolean;
   caddyVersion: string;
@@ -31,8 +46,52 @@ interface GatewayStatus {
   memoryUsage: { total: number; used: number; free: number; percentage: number };
   cpuUsage: number;
   services: ServiceHealth[];
+  agentGateways: AgentGateway[];
   lastChecked: string;
 }
+
+// Known agent gateways to monitor
+const KNOWN_AGENT_GATEWAYS: Array<{
+  name: string;
+  displayName: string;
+  description: string;
+  port: number;
+  processHint: string; // regex hint to find the process
+  icon: string;
+}> = [
+  {
+    name: 'z-ai-gateway',
+    displayName: 'Z-AI Gateway',
+    description: 'AI service gateway providing LLM, VLM, TTS, ASR and image generation capabilities',
+    port: 12600,
+    processHint: 'python3.*main\\.py',
+    icon: 'sparkles',
+  },
+  {
+    name: 'openclaw',
+    displayName: 'OpenClaw',
+    description: 'OpenClaw agent tool service',
+    port: 19001,
+    processHint: 'openclaw',
+    icon: 'puzzle',
+  },
+  {
+    name: 'hermes',
+    displayName: 'Hermes',
+    description: 'Hermes agent tool service',
+    port: 19006,
+    processHint: 'hermes',
+    icon: 'zap',
+  },
+  {
+    name: 'file-server',
+    displayName: 'File Server',
+    description: 'File storage and serving service',
+    port: 19005,
+    processHint: 'file.server|file-server',
+    icon: 'folder',
+  },
+];
 
 async function isCaddyRunning(): Promise<boolean> {
   try {
@@ -116,6 +175,110 @@ async function checkHttpHealth(port: number): Promise<{ status: number | null; r
   }
 }
 
+async function getProcessInfoForPort(port: number): Promise<{ pid: number | null; uptime: number; memoryMB: number }> {
+  try {
+    // Find PID listening on this port - try multiple approaches
+    let pid: number | null = null;
+
+    // Method 1: ss with pid extraction
+    try {
+      const { stdout } = await execp(`ss -tlnp 2>/dev/null | grep ':${port} ' | grep -oP 'pid=\\K[0-9]+' | head -1`);
+      pid = parseInt(stdout.trim(), 10) || null;
+    } catch { /* ignore */ }
+
+    // Method 2: lsof fallback
+    if (!pid) {
+      try {
+        const { stdout } = await execp(`lsof -iTCP:${port} -sTCP:LISTEN -t 2>/dev/null | head -1`);
+        pid = parseInt(stdout.trim(), 10) || null;
+      } catch { /* ignore */ }
+    }
+
+    // Method 3: fuser fallback
+    if (!pid) {
+      try {
+        const { stdout } = await execp(`fuser ${port}/tcp 2>/dev/null | awk '{print $1}' | head -1`);
+        pid = parseInt(stdout.trim(), 10) || null;
+      } catch { /* ignore */ }
+    }
+
+    if (!pid) return { pid: null, uptime: 0, memoryMB: 0 };
+
+    // Get uptime and memory for this PID
+    let uptime = 0;
+    let memoryMB = 0;
+
+    try {
+      const { stdout: uptimeOut } = await execp(`ps -o etimes= -p ${pid} 2>/dev/null || echo 0`);
+      uptime = parseInt(uptimeOut.trim(), 10) || 0;
+    } catch { /* ignore */ }
+
+    try {
+      const { stdout: memOut } = await execp(`ps -o rss= -p ${pid} 2>/dev/null || echo 0`);
+      const rssKB = parseInt(memOut.trim(), 10) || 0;
+      memoryMB = Math.round(rssKB / 1024);
+    } catch { /* ignore */ }
+
+    return { pid, uptime, memoryMB };
+  } catch {
+    return { pid: null, uptime: 0, memoryMB: 0 };
+  }
+}
+
+async function checkAgentGatewayHealth(port: number): Promise<{ httpStatus: number | null; responseTime: number | null; reachable: boolean }> {
+  try {
+    const start = Date.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+
+    const response = await fetch(`http://127.0.0.1:${port}/`, {
+      signal: controller.signal,
+      headers: { 'Accept': '*/*' },
+    });
+    clearTimeout(timeout);
+    const responseTime = Date.now() - start;
+    // Any HTTP response (even 404) means the service is reachable
+    return { httpStatus: response.status, responseTime, reachable: true };
+  } catch {
+    return { httpStatus: null, responseTime: null, reachable: false };
+  }
+}
+
+async function checkAgentGateways(): Promise<AgentGateway[]> {
+  const results = await Promise.all(
+    KNOWN_AGENT_GATEWAYS.map(async (gateway) => {
+      const isListening = await isPortListening(gateway.port);
+      const processInfo = isListening ? await getProcessInfoForPort(gateway.port) : { pid: null, uptime: 0, memoryMB: 0 };
+
+      let httpStatus: number | null = null;
+      let responseTime: number | null = null;
+
+      if (isListening) {
+        const health = await checkAgentGatewayHealth(gateway.port);
+        httpStatus = health.httpStatus;
+        responseTime = health.responseTime;
+      }
+
+      return {
+        name: gateway.name,
+        displayName: gateway.displayName,
+        description: gateway.description,
+        port: gateway.port,
+        status: isListening ? 'running' as const : 'stopped' as const,
+        pid: processInfo.pid,
+        uptime: processInfo.uptime,
+        memoryMB: processInfo.memoryMB,
+        version: '', // Could be enhanced to detect version
+        httpStatus,
+        responseTime,
+        icon: gateway.icon,
+      };
+    })
+  );
+
+  return results;
+}
+
 // GET /api/gateway/status
 export async function GET() {
   try {
@@ -125,12 +288,14 @@ export async function GET() {
       gatewayListening,
       caddyUptime,
       cpuUsage,
+      agentGateways,
     ] = await Promise.all([
       isCaddyRunning(),
       getCaddyVersion(),
       isPortListening(81),
       getCaddyUptimeSeconds(),
       getCpuUsage(),
+      checkAgentGateways(),
     ]);
 
     // System memory
@@ -193,6 +358,7 @@ export async function GET() {
       },
       cpuUsage,
       services,
+      agentGateways,
       lastChecked: new Date().toISOString(),
     };
 

@@ -155,6 +155,21 @@ interface ServiceHealth {
   gatewayAccessible: boolean;
 }
 
+interface AgentGateway {
+  name: string;
+  displayName: string;
+  description: string;
+  port: number;
+  status: 'running' | 'stopped';
+  pid: number | null;
+  uptime: number;
+  memoryMB: number;
+  version: string;
+  httpStatus: number | null;
+  responseTime: number | null;
+  icon: string;
+}
+
 interface GatewayStatusData {
   caddyRunning: boolean;
   caddyVersion: string;
@@ -166,6 +181,7 @@ interface GatewayStatusData {
   memoryUsage: { total: number; used: number; free: number; percentage: number };
   cpuUsage: number;
   services: ServiceHealth[];
+  agentGateways: AgentGateway[];
   lastChecked: string;
 }
 
@@ -652,6 +668,11 @@ export default function DashboardPage() {
                     {gatewayStatus?.caddyRunning ? 'Online' : gatewayStatus ? 'Offline' : '...'}
                   </p>
                   {gatewayStatus?.caddyRunning && <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                  {gatewayStatus?.agentGateways && gatewayStatus.agentGateways.filter(a => a.status === 'running').length > 0 && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {gatewayStatus.agentGateways.filter(a => a.status === 'running').length} agents
+                    </span>
+                  )}
                 </div>
               </div>
             </button>
@@ -769,8 +790,14 @@ export default function DashboardPage() {
       {/* Footer */}
       <footer className="border-t mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Web Dashboard v2.0</span>
+          <span>Web Dashboard v2.1</span>
           <div className="flex items-center gap-4">
+            {gatewayStatus?.agentGateways && gatewayStatus.agentGateways.filter(a => a.status === 'running').length > 0 && (
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
+                {gatewayStatus.agentGateways.filter(a => a.status === 'running').length} agents online
+              </span>
+            )}
             {lanIP && (
               <span className="flex items-center gap-1.5">
                 <Wifi className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
@@ -2677,6 +2704,24 @@ function LogViewerDialog({
 }
 
 // ============ Gateway Monitor Dialog ============
+// ============ Agent Gateway Icon Map ============
+const AGENT_ICON_MAP: Record<string, LucideIcon> = {
+  'sparkles': Sparkles,
+  'puzzle': Puzzle,
+  'zap': Zap,
+  'folder': Folder,
+  'server': Server,
+  'globe': Globe,
+  'terminal': Terminal,
+  'cpu': Cpu,
+  'shield': Shield,
+  'code': Code,
+  'rocket': Rocket,
+  'cloud': Cloud,
+  'database': Database,
+  'package': Package,
+};
+
 function GatewayMonitorDialog({
   open,
   onOpenChange,
@@ -2689,6 +2734,7 @@ function GatewayMonitorDialog({
   onRefresh: () => void;
 }) {
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -2700,6 +2746,9 @@ function GatewayMonitorDialog({
   const stoppedServices = gatewayStatus?.services.filter(s => s.status === 'stopped') || [];
   const accessibleServices = runningServices.filter(s => s.gatewayAccessible);
 
+  const runningAgents = gatewayStatus?.agentGateways.filter(a => a.status === 'running') || [];
+  const stoppedAgents = gatewayStatus?.agentGateways.filter(a => a.status === 'stopped') || [];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -2709,7 +2758,7 @@ function GatewayMonitorDialog({
             Gateway Monitor
           </DialogTitle>
           <DialogDescription>
-            Real-time gateway and service health monitoring
+            Real-time gateway, agent service and project health monitoring
           </DialogDescription>
         </DialogHeader>
 
@@ -2718,193 +2767,411 @@ function GatewayMonitorDialog({
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-4 py-3">
-            {/* Gateway Status Overview */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Caddy Status Card */}
-              <div className={`rounded-lg border p-3 ${gatewayStatus.caddyRunning ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`h-2 w-2 rounded-full ${gatewayStatus.caddyRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                  <span className="text-sm font-medium">Caddy Gateway</span>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Process</span>
-                    <span className={gatewayStatus.caddyRunning ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
-                      {gatewayStatus.caddyRunning ? 'Running' : 'Stopped'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Port :{gatewayStatus.gatewayPort}</span>
-                    <span className={gatewayStatus.gatewayListening ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
-                      {gatewayStatus.gatewayListening ? 'Listening' : 'Not Listening'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Uptime</span>
-                    <span className="font-mono">{formatUptime(gatewayStatus.uptime)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Version</span>
-                    <span className="font-mono text-[11px]">{gatewayStatus.caddyVersion.split(' ')[0]}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* System Resources Card */}
-              <div className="rounded-lg border p-3 border-border/50 bg-muted/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm font-medium">System Resources</span>
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">CPU</span>
-                      <span className={`font-mono font-medium ${gatewayStatus.cpuUsage > 80 ? 'text-red-500' : gatewayStatus.cpuUsage > 50 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {gatewayStatus.cpuUsage}%
-                      </span>
-                    </div>
-                    <div className={gatewayStatus.cpuUsage > 80 ? '[&_[data-slot=progress-indicator]]:bg-red-500' : gatewayStatus.cpuUsage > 50 ? '[&_[data-slot=progress-indicator]]:bg-amber-500' : '[&_[data-slot=progress-indicator]]:bg-emerald-500'}>
-                      <Progress value={gatewayStatus.cpuUsage} className="h-1.5" />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">Memory</span>
-                      <span className={`font-mono font-medium ${gatewayStatus.memoryUsage.percentage > 80 ? 'text-red-500' : gatewayStatus.memoryUsage.percentage > 50 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {gatewayStatus.memoryUsage.percentage}%
-                      </span>
-                    </div>
-                    <div className={gatewayStatus.memoryUsage.percentage > 80 ? '[&_[data-slot=progress-indicator]]:bg-red-500' : gatewayStatus.memoryUsage.percentage > 50 ? '[&_[data-slot=progress-indicator]]:bg-amber-500' : '[&_[data-slot=progress-indicator]]:bg-emerald-500'}>
-                      <Progress value={gatewayStatus.memoryUsage.percentage} className="h-1.5" />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {formatBytes(gatewayStatus.memoryUsage.used)} / {formatBytes(gatewayStatus.memoryUsage.total)}
-                    </p>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">System Uptime</span>
-                    <span className="font-mono">{formatUptime(gatewayStatus.systemUptime)}</span>
-                  </div>
-                </div>
-              </div>
+          <div className="space-y-4 py-2">
+            {/* Tab Navigation */}
+            <div className="flex items-center rounded-lg border border-border/50 bg-muted/30 p-0.5" role="tablist">
+              {[
+                { key: 'overview', label: 'Overview', icon: HeartPulse },
+                { key: 'agents', label: 'Agent Gateways', icon: Sparkles, badge: runningAgents.length > 0 ? `${runningAgents.length}/${runningAgents.length + stoppedAgents.length}` : undefined },
+                { key: 'services', label: 'Project Services', icon: Activity, badge: runningServices.length > 0 ? `${runningServices.length}/${runningServices.length + stoppedServices.length}` : undefined },
+              ].map(({ key, label, icon: TabIcon, badge }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex-1 justify-center ${
+                    activeTab === key ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  role="tab"
+                  aria-selected={activeTab === key}
+                >
+                  <TabIcon className="h-3.5 w-3.5" />
+                  {label}
+                  {badge && <span className="ml-0.5 text-[10px] opacity-70">({badge})</span>}
+                </button>
+              ))}
             </div>
 
-            {/* Service Health Summary */}
-            <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm font-medium">Service Health</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs">
-                  {runningServices.length > 0 && (
-                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      {runningServices.length} running
-                    </span>
-                  )}
-                  {stoppedServices.length > 0 && (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
-                      {stoppedServices.length} stopped
-                    </span>
-                  )}
-                  {runningServices.length > 0 && (
-                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                      <Check className="h-3 w-3" />
-                      {accessibleServices.length}/{runningServices.length} accessible
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {gatewayStatus.services.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">No services configured</p>
-              ) : (
-                <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {gatewayStatus.services.map(service => (
-                    <div
-                      key={service.envId}
-                      className={`flex items-center justify-between rounded-md px-3 py-1.5 text-xs ${
-                        service.status === 'running'
-                          ? service.gatewayAccessible
-                            ? 'bg-emerald-500/5 border border-emerald-500/10'
-                            : 'bg-amber-500/5 border border-amber-500/10'
-                          : 'bg-muted/30 border border-border/30'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full shrink-0 ${
-                          service.status === 'running'
-                            ? service.gatewayAccessible
-                              ? 'bg-emerald-500 animate-pulse'
-                              : 'bg-amber-500'
-                            : 'bg-muted-foreground/30'
-                        }`} />
-                        <span className="font-medium">{service.projectName}</span>
-                        <span className="text-muted-foreground">/</span>
-                        <span className="text-muted-foreground">{formatEnvName(service.envName, true)}</span>
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div className="space-y-3">
+                {/* Gateway Status Overview */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Caddy Status Card */}
+                  <div className={`rounded-lg border p-3 ${gatewayStatus.caddyRunning ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`h-2 w-2 rounded-full ${gatewayStatus.caddyRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                      <span className="text-sm font-medium">Caddy Gateway</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Process</span>
+                        <span className={gatewayStatus.caddyRunning ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
+                          {gatewayStatus.caddyRunning ? 'Running' : 'Stopped'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-muted-foreground">:{service.port}</span>
-                        {service.status === 'running' ? (
-                          <>
-                            {service.httpStatus !== null ? (
-                              <span className={`font-mono font-medium ${service.httpStatus < 400 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                HTTP {service.httpStatus}
-                              </span>
-                            ) : (
-                              <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3" />
-                                Unreachable
-                              </span>
-                            )}
-                            {service.responseTime !== null && (
-                              <span className="flex items-center gap-1 text-muted-foreground font-mono">
-                                <Timer className="h-3 w-3" />
-                                {service.responseTime}ms
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px] h-4">Stopped</Badge>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Port :{gatewayStatus.gatewayPort}</span>
+                        <span className={gatewayStatus.gatewayListening ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
+                          {gatewayStatus.gatewayListening ? 'Listening' : 'Not Listening'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Uptime</span>
+                        <span className="font-mono">{formatUptime(gatewayStatus.uptime)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Version</span>
+                        <span className="font-mono text-[11px]">{gatewayStatus.caddyVersion.split(' ')[0]}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* System Resources Card */}
+                  <div className="rounded-lg border p-3 border-border/50 bg-muted/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-sm font-medium">System Resources</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">CPU</span>
+                          <span className={`font-mono font-medium ${gatewayStatus.cpuUsage > 80 ? 'text-red-500' : gatewayStatus.cpuUsage > 50 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {gatewayStatus.cpuUsage}%
+                          </span>
+                        </div>
+                        <div className={gatewayStatus.cpuUsage > 80 ? '[&_[data-slot=progress-indicator]]:bg-red-500' : gatewayStatus.cpuUsage > 50 ? '[&_[data-slot=progress-indicator]]:bg-amber-500' : '[&_[data-slot=progress-indicator]]:bg-emerald-500'}>
+                          <Progress value={gatewayStatus.cpuUsage} className="h-1.5" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">Memory</span>
+                          <span className={`font-mono font-medium ${gatewayStatus.memoryUsage.percentage > 80 ? 'text-red-500' : gatewayStatus.memoryUsage.percentage > 50 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {gatewayStatus.memoryUsage.percentage}%
+                          </span>
+                        </div>
+                        <div className={gatewayStatus.memoryUsage.percentage > 80 ? '[&_[data-slot=progress-indicator]]:bg-red-500' : gatewayStatus.memoryUsage.percentage > 50 ? '[&_[data-slot=progress-indicator]]:bg-amber-500' : '[&_[data-slot=progress-indicator]]:bg-emerald-500'}>
+                          <Progress value={gatewayStatus.memoryUsage.percentage} className="h-1.5" />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {formatBytes(gatewayStatus.memoryUsage.used)} / {formatBytes(gatewayStatus.memoryUsage.total)}
+                        </p>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">System Uptime</span>
+                        <span className="font-mono">{formatUptime(gatewayStatus.systemUptime)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Agent Gateway Quick Summary */}
+                {gatewayStatus.agentGateways.length > 0 && (
+                  <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm font-medium">Agent Gateways</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs">
+                        {runningAgents.length > 0 && (
+                          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            {runningAgents.length} online
+                          </span>
+                        )}
+                        {stoppedAgents.length > 0 && (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+                            {stoppedAgents.length} offline
+                          </span>
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {gatewayStatus.agentGateways.map(agent => {
+                        const AgentIcon = AGENT_ICON_MAP[agent.icon] || Server;
+                        return (
+                          <div
+                            key={agent.name}
+                            className={`flex flex-col items-center gap-1.5 rounded-md p-2 border transition-colors ${
+                              agent.status === 'running'
+                                ? 'border-emerald-500/20 bg-emerald-500/5'
+                                : 'border-border/30 bg-muted/20'
+                            }`}
+                          >
+                            <div className={`h-7 w-7 rounded-md flex items-center justify-center ${
+                              agent.status === 'running' ? 'bg-emerald-500/10' : 'bg-muted/50'
+                            }`}>
+                              <AgentIcon className={`h-3.5 w-3.5 ${agent.status === 'running' ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/50'}`} />
+                            </div>
+                            <span className="text-[11px] font-medium leading-tight text-center">{agent.displayName}</span>
+                            <div className="flex items-center gap-1">
+                              <div className={`h-1.5 w-1.5 rounded-full ${agent.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+                              <span className={`text-[10px] ${agent.status === 'running' ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                                :{agent.port}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('agents')}
+                      className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 mx-auto"
+                    >
+                      View details <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
 
-            {/* Gateway Config Info */}
-            <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Settings className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm font-medium">Gateway Configuration</span>
+                {/* Gateway Config Info */}
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Settings className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-sm font-medium">Gateway Configuration</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
+                      <span className="text-muted-foreground">Listen Port</span>
+                      <span className="font-mono font-medium">:{gatewayStatus.gatewayPort}</span>
+                    </div>
+                    <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
+                      <span className="text-muted-foreground">Config Valid</span>
+                      <span className={gatewayStatus.configValid ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
+                        {gatewayStatus.configValid ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
+                      <span className="text-muted-foreground">Default Route</span>
+                      <span className="font-mono">:3000</span>
+                    </div>
+                    <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
+                      <span className="text-muted-foreground">Port Forward</span>
+                      <span className="font-mono">XTransformPort</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
-                  <span className="text-muted-foreground">Listen Port</span>
-                  <span className="font-mono font-medium">:{gatewayStatus.gatewayPort}</span>
-                </div>
-                <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
-                  <span className="text-muted-foreground">Config Valid</span>
-                  <span className={gatewayStatus.configValid ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-amber-600 dark:text-amber-400 font-medium'}>
-                    {gatewayStatus.configValid ? 'Yes' : 'No'}
-                  </span>
-                </div>
-                <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
-                  <span className="text-muted-foreground">Default Route</span>
-                  <span className="font-mono">:3000</span>
-                </div>
-                <div className="flex justify-between bg-background/60 rounded px-2.5 py-1.5">
-                  <span className="text-muted-foreground">Port Forward</span>
-                  <span className="font-mono">XTransformPort</span>
+            )}
+
+            {/* Agent Gateways Tab */}
+            {activeTab === 'agents' && (
+              <div className="space-y-3">
+                {gatewayStatus.agentGateways.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Sparkles className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                    <p className="text-sm text-muted-foreground">No agent gateways detected</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Agent services will appear here when running</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Summary Bar */}
+                    <div className="flex items-center gap-4 px-1 text-xs">
+                      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        {runningAgents.length} Online
+                      </span>
+                      {stoppedAgents.length > 0 && (
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+                          {stoppedAgents.length} Offline
+                        </span>
+                      )}
+                    </div>
+                    {/* Agent Cards */}
+                    <div className="space-y-2">
+                      {gatewayStatus.agentGateways.map(agent => {
+                        const AgentIcon = AGENT_ICON_MAP[agent.icon] || Server;
+                        const isRunning = agent.status === 'running';
+                        return (
+                          <div
+                            key={agent.name}
+                            className={`rounded-lg border p-3 transition-colors ${
+                              isRunning
+                                ? agent.httpStatus !== null
+                                  ? 'border-emerald-500/20 bg-emerald-500/5'
+                                  : 'border-amber-500/20 bg-amber-500/5'
+                                : 'border-border/30 bg-muted/20'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2.5">
+                                <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
+                                  isRunning ? 'bg-emerald-500/10' : 'bg-muted/50'
+                                }`}>
+                                  <AgentIcon className={`h-4.5 w-4.5 ${isRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/50'}`} />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">{agent.displayName}</span>
+                                    <div className={`h-2 w-2 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground leading-snug mt-0.5 max-w-[280px]">{agent.description}</p>
+                                </div>
+                              </div>
+                              <Badge variant={isRunning ? 'default' : 'secondary'} className={`text-[10px] h-5 shrink-0 ${isRunning ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15' : ''}`}>
+                                {isRunning ? 'Online' : 'Offline'}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-xs bg-background/40 rounded-md px-2.5 py-2">
+                              <div className="flex flex-col">
+                                <span className="text-muted-foreground text-[10px]">Port</span>
+                                <span className="font-mono font-medium">:{agent.port}</span>
+                              </div>
+                              {isRunning && (
+                                <>
+                                  {agent.pid !== null && (
+                                    <div className="flex flex-col">
+                                      <span className="text-muted-foreground text-[10px]">PID</span>
+                                      <span className="font-mono">{agent.pid}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex flex-col">
+                                    <span className="text-muted-foreground text-[10px]">Uptime</span>
+                                    <span className="font-mono">{formatUptime(agent.uptime)}</span>
+                                  </div>
+                                  {agent.memoryMB > 0 && (
+                                    <div className="flex flex-col">
+                                      <span className="text-muted-foreground text-[10px]">Memory</span>
+                                      <span className="font-mono">{agent.memoryMB} MB</span>
+                                    </div>
+                                  )}
+                                  {agent.httpStatus !== null ? (
+                                    <div className="flex flex-col">
+                                      <span className="text-muted-foreground text-[10px]">HTTP</span>
+                                      <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                                        {agent.httpStatus} {agent.httpStatus === 404 ? '(API)' : ''}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col">
+                                      <span className="text-muted-foreground text-[10px]">HTTP</span>
+                                      <span className="text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                                        <AlertCircle className="h-3 w-3" />
+                                        N/A
+                                      </span>
+                                    </div>
+                                  )}
+                                  {agent.responseTime !== null && (
+                                    <div className="flex flex-col">
+                                      <span className="text-muted-foreground text-[10px]">Response</span>
+                                      <span className="flex items-center gap-0.5 font-mono">
+                                        <Timer className="h-3 w-3 text-muted-foreground" />
+                                        {agent.responseTime}ms
+                                      </span>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                              {!isRunning && (
+                                <div className="flex flex-col col-span-2">
+                                  <span className="text-muted-foreground text-[10px]">Status</span>
+                                  <span className="text-muted-foreground/70">Service not running on this port</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Project Services Tab */}
+            {activeTab === 'services' && (
+              <div className="space-y-3">
+                {/* Service Health Summary */}
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-sm font-medium">Service Health</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      {runningServices.length > 0 && (
+                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          {runningServices.length} running
+                        </span>
+                      )}
+                      {stoppedServices.length > 0 && (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
+                          {stoppedServices.length} stopped
+                        </span>
+                      )}
+                      {runningServices.length > 0 && (
+                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                          <Check className="h-3 w-3" />
+                          {accessibleServices.length}/{runningServices.length} accessible
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {gatewayStatus.services.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">No services configured</p>
+                  ) : (
+                    <div className="space-y-1 max-h-72 overflow-y-auto">
+                      {gatewayStatus.services.map(service => (
+                        <div
+                          key={service.envId}
+                          className={`flex items-center justify-between rounded-md px-3 py-1.5 text-xs ${
+                            service.status === 'running'
+                              ? service.gatewayAccessible
+                                ? 'bg-emerald-500/5 border border-emerald-500/10'
+                                : 'bg-amber-500/5 border border-amber-500/10'
+                              : 'bg-muted/30 border border-border/30'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`h-2 w-2 rounded-full shrink-0 ${
+                              service.status === 'running'
+                                ? service.gatewayAccessible
+                                  ? 'bg-emerald-500 animate-pulse'
+                                  : 'bg-amber-500'
+                                : 'bg-muted-foreground/30'
+                            }`} />
+                            <span className="font-medium">{service.projectName}</span>
+                            <span className="text-muted-foreground">/</span>
+                            <span className="text-muted-foreground">{formatEnvName(service.envName, true)}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-muted-foreground">:{service.port}</span>
+                            {service.status === 'running' ? (
+                              <>
+                                {service.httpStatus !== null ? (
+                                  <span className={`font-mono font-medium ${service.httpStatus < 400 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                    HTTP {service.httpStatus}
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Unreachable
+                                  </span>
+                                )}
+                                {service.responseTime !== null && (
+                                  <span className="flex items-center gap-1 text-muted-foreground font-mono">
+                                    <Timer className="h-3 w-3" />
+                                    {service.responseTime}ms
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px] h-4">Stopped</Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Last Checked */}
             <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
