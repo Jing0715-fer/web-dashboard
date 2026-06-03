@@ -19,7 +19,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from '@/components/ui/sheet';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -1159,7 +1159,7 @@ function ProjectCard({
       transition={{ duration: 0.2 }}
     >
       <Card
-        className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-border/50 hover:-translate-y-0.5 relative overflow-hidden py-3 gap-1.5 ${
+        className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-border/50 hover:-translate-y-0.5 relative overflow-hidden py-2 gap-0.5 ${
           hasRunning ? 'hover:border-emerald-500/30' : 'hover:border-border'
         }`}
         onClick={onOpen}
@@ -1169,7 +1169,7 @@ function ProjectCard({
           hasRunning ? 'bg-gradient-to-b from-emerald-500 to-teal-500' : 'bg-muted-foreground/20'
         }`} />
 
-        <CardHeader className="pb-1.5 pl-3.5 pr-3">
+        <CardHeader className="pb-1 pl-3.5 pr-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2.5">
               <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${
@@ -1231,20 +1231,20 @@ function ProjectCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-0 pl-3.5 pr-3 pb-2.5">
+        <CardContent className="pt-0 pl-3.5 pr-3 pb-1.5">
           {project.description && (
-            <p className="text-[11px] text-muted-foreground mb-1.5 line-clamp-2">{project.description}</p>
+            <p className="text-[11px] text-muted-foreground mb-1 line-clamp-2">{project.description}</p>
           )}
           {totalCount > 0 ? (
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {/* Quick toggle per environment */}
-              <div className="flex flex-col gap-px">
+              <div className="flex flex-col gap-0">
                 {project.environments.map(env => {
                   const isLoading = actionLoading.has(env.id);
                   return (
                     <div
                       key={env.id}
-                      className="flex items-center justify-between gap-2 rounded px-1.5 py-0.5 -mx-1.5 hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between gap-2 rounded px-1.5 py-px -mx-1.5 hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
                         <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
@@ -1299,7 +1299,7 @@ function ProjectCard({
                 })}
               </div>
               {/* Summary row */}
-              <div className="flex items-center justify-between pt-0.5">
+              <div className="flex items-center justify-between pt-px">
                 <span className={`text-[11px] font-medium ${runningCount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                   {runningCount}/{totalCount} running
                 </span>
@@ -1625,7 +1625,9 @@ function ProjectDetailSheet({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col">
-          <SheetHeader className="px-5 pt-5 pb-3 border-b">
+          <SheetHeader className="px-4 pt-4 pb-2 border-b">
+            <SheetTitle className="sr-only">Loading project</SheetTitle>
+            <SheetDescription className="sr-only">Project details are loading</SheetDescription>
             <div className="flex items-center gap-2.5">
               <div className="h-10 w-10 rounded-lg bg-muted animate-pulse" />
               <div className="space-y-1.5">
@@ -1716,28 +1718,29 @@ function ProjectDetailSheet({
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
-          <SheetHeader className="px-5 pt-5 pb-3 border-b">
+          <SheetHeader className="px-4 pt-4 pb-2 border-b">
             <div className="flex items-center gap-2.5">
               <div className="h-10 w-10 rounded-lg bg-muted/80 border border-border/50 flex items-center justify-center">
                 <ProjectIcon icon={project.icon} className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="min-w-0">
                 <SheetTitle className="text-base">{project.name}</SheetTitle>
+                <SheetDescription className="sr-only">{project.path}</SheetDescription>
                 <p className="text-xs text-muted-foreground font-mono truncate">{project.path}</p>
               </div>
             </div>
           </SheetHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-            <div className="px-5 pt-2">
+            <div className="px-4 pt-1.5">
               <TabsList className="w-full">
                 <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
                 <TabsTrigger value="environments" className="flex-1">Environments</TabsTrigger>
               </TabsList>
             </div>
 
-            <TabsContent value="overview" className="flex-1 overflow-auto px-5 py-3">
-              <div className="space-y-4">
+            <TabsContent value="overview" className="flex-1 overflow-auto px-4 py-2.5">
+              <div className="space-y-3">
                 {project.description && (
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground mb-1">Description</h4>
@@ -1746,7 +1749,7 @@ function ProjectDetailSheet({
                 )}
 
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Project Path</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1.5">Project Path</h4>
                   <div className="flex items-center gap-2">
                     <code className="text-sm bg-muted px-3 py-2 rounded-md block font-mono flex-1">{project.path}</code>
                     <CopyableText text={project.path} />
@@ -1754,16 +1757,16 @@ function ProjectDetailSheet({
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Environments Summary</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1.5">Environments Summary</h4>
                   {project.environments.length === 0 ? (
-                    <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-4 text-center">
+                    <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 text-center">
                       No environments configured yet.
                       <br />Use AI to auto-configure or add manually.
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {project.environments.map(env => (
-                        <div key={env.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2">
+                        <div key={env.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-1.5">
                           <div className="flex items-center gap-2.5">
                             <div className={`h-2 w-2 rounded-full ${env.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
                             <div>
@@ -1813,7 +1816,7 @@ function ProjectDetailSheet({
               </div>
             </TabsContent>
 
-            <TabsContent value="environments" className="flex-1 overflow-auto px-5 py-3">
+            <TabsContent value="environments" className="flex-1 overflow-auto px-4 py-2.5">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">Environments</h4>
