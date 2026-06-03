@@ -1,4 +1,31 @@
 ---
+Task ID: 8
+Agent: Main Agent
+Task: Add Claude Code CLI integration for project analysis and skill file
+
+Work Log:
+- Installed Claude Code CLI globally (`npm install -g @anthropic-ai/claude-code` v2.1.161)
+- Created skills/project-config-analyzer.md - a comprehensive skill/instruction file that guides Claude Code on how to analyze projects and generate startup configurations
+- Created /api/projects/[id]/analyze-cli/route.ts - API endpoint that invokes Claude Code CLI (`claude -p --output-format json`) to analyze a project directory
+- Updated AddProjectDialog with analysis mode selector:
+  - Two visual card buttons: "LLM API" (emerald) and "Claude Code CLI" (violet)
+  - Mode selection determines which API endpoint is called (analyze vs analyze-cli)
+  - Status banner adapts to show which mode is active
+  - Submit button text changes: "Add & Auto-Configure" vs "Add & CLI Configure"
+  - CLI mode works independently of LLM provider configuration
+- Updated ProjectDetailSheet Re-Analyze button:
+  - Changed from single button to DropdownMenu with two options
+  - "LLM API Analysis" (requires LLM config) and "Claude Code CLI" (always available)
+- Updated empty environments panel with both "AI Auto-Configure" and "Claude Code CLI" buttons
+- All lint checks pass, browser verified
+
+Stage Summary:
+- Claude Code CLI integration complete with skill file for analysis guidance
+- Add Project dialog has two analysis modes: LLM API and Claude Code CLI
+- Project detail sheet has dropdown with both analysis options
+- Skill file at skills/project-config-analyzer.md provides detailed instructions for project analysis
+
+---
 Task ID: 7
 Agent: Main Agent
 Task: Add Claude Code CLI config auto-detection and Anthropic-compatible LLM support

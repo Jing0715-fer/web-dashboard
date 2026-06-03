@@ -1327,6 +1327,7 @@ function AddProjectDialog({
 }) {
   const [path, setPath] = useState('');
   const [name, setName] = useState('');
+  const [analyzeMode, setAnalyzeMode] = useState<'api' | 'cli'>('api');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
@@ -1346,23 +1347,28 @@ function AddProjectDialog({
         body: JSON.stringify({ path: path.trim(), name: name.trim() || undefined }),
       });
 
-      if (llmReady) {
-        toast({ title: 'Project created', description: 'Starting AI analysis...' });
+      if (llmReady || analyzeMode === 'cli') {
+        const modeLabel = analyzeMode === 'cli' ? 'Claude Code CLI' : 'AI';
+        toast({ title: 'Project created', description: `Starting ${modeLabel} analysis...` });
 
-        // Then analyze with LLM
+        // Then analyze with LLM or Claude Code CLI
         setIsAnalyzing(true);
         try {
-          const result = await apiFetch<{ project: Project; analysis: any }>(`/api/projects/${data.project.id}/analyze`, {
+          const analyzeUrl = analyzeMode === 'cli'
+            ? `/api/projects/${data.project.id}/analyze-cli`
+            : `/api/projects/${data.project.id}/analyze`;
+          const result = await apiFetch<{ project: Project; analysis: any }>(analyzeUrl, {
             method: 'POST',
           });
           toast({
-            title: 'AI Configuration Complete',
+            title: `${modeLabel} Configuration Complete`,
             description: `Detected ${result.analysis?.environments?.length || 0} environments for ${result.analysis?.projectName || data.project.name}`,
             duration: 5000,
           });
         } catch (analyzeErr: any) {
+          const modeLabel = analyzeMode === 'cli' ? 'Claude Code CLI' : 'AI';
           toast({
-            title: 'AI Analysis Failed',
+            title: `${modeLabel} Analysis Failed`,
             description: analyzeErr.message + '. You can manually configure environments.',
             variant: 'destructive',
             duration: 7000,
@@ -1400,14 +1406,18 @@ function AddProjectDialog({
         <div className="space-y-4 py-4">
           {/* LLM Status Banner */}
           <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
-            llmReady
+            llmReady || analyzeMode === 'cli'
               ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
               : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'
           }`}>
-            {llmReady ? (
+            {llmReady || analyzeMode === 'cli' ? (
               <>
                 <Wifi className="h-3.5 w-3.5 shrink-0" />
-                <span>AI auto-configuration enabled ({providerLabel})</span>
+                <span>
+                  {analyzeMode === 'cli'
+                    ? 'Claude Code CLI will be used for analysis'
+                    : `AI auto-configuration enabled (${providerLabel})`}
+                </span>
               </>
             ) : (
               <>
@@ -1416,6 +1426,60 @@ function AddProjectDialog({
               </>
             )}
           </div>
+
+          {/* Analysis Mode Selection */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Analysis Method</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setAnalyzeMode('api')}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-3 text-center transition-all ${
+                  analyzeMode === 'api'
+                    ? 'border-emerald-500 bg-emerald-500/5 dark:bg-emerald-500/10'
+                    : 'border-muted hover:border-muted-foreground/25'
+                }`}
+              >
+                <Settings className={`h-5 w-5 ${analyzeMode === 'api' ? 'text-emerald-500 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+                <span className={`text-xs font-medium ${analyzeMode === 'api' ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                  LLM API
+                </span>
+                <span className="text-[10px] text-muted-foreground leading-tight">
+                  Use configured API provider
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAnalyzeMode('cli')}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border-2 p-3 text-center transition-all ${
+                  analyzeMode === 'cli'
+                    ? 'border-violet-500 bg-violet-500/5 dark:bg-violet-500/10'
+                    : 'border-muted hover:border-muted-foreground/25'
+                }`}
+              >
+                <Terminal className={`h-5 w-5 ${analyzeMode === 'cli' ? 'text-violet-500 dark:text-violet-400' : 'text-muted-foreground'}`} />
+                <span className={`text-xs font-medium ${analyzeMode === 'cli' ? 'text-violet-700 dark:text-violet-400' : 'text-muted-foreground'}`}>
+                  Claude Code CLI
+                </span>
+                <span className="text-[10px] text-muted-foreground leading-tight">
+                  Use Claude Code directly
+                </span>
+              </button>
+            </div>
+            {analyzeMode === 'cli' && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Terminal className="h-3 w-3 text-violet-500 dark:text-violet-400" />
+                Invokes <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">claude</code> CLI to analyze the project directory and generate startup configs. Requires Claude Code CLI installed and authenticated.
+              </p>
+            )}
+            {analyzeMode === 'api' && !llmReady && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <AlertCircle className="h-3 w-3" />
+                No LLM provider configured. Switch to Claude Code CLI or configure LLM settings first.
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="path" className="text-sm font-medium">
               Project Directory <span className="text-destructive">*</span>
@@ -1450,11 +1514,15 @@ function AddProjectDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isCreating}>
             Cancel
           </Button>
-          <Button onClick={handleAutoDetect} disabled={isCreating || !path.trim()} className="gap-2">
+          <Button
+            onClick={handleAutoDetect}
+            disabled={isCreating || !path.trim() || (analyzeMode === 'api' && !llmReady)}
+            className="gap-2"
+          >
             {isAnalyzing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                AI Analyzing...
+                {analyzeMode === 'cli' ? 'Claude Code Analyzing...' : 'AI Analyzing...'}
               </>
             ) : isCreating ? (
               <>
@@ -1463,8 +1531,8 @@ function AddProjectDialog({
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4" />
-                Add & Auto-Configure
+                {analyzeMode === 'cli' ? <Terminal className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                {analyzeMode === 'cli' ? 'Add & CLI Configure' : 'Add & Auto-Configure'}
               </>
             )}
           </Button>
@@ -1591,15 +1659,19 @@ function ProjectDetailSheet({
     }
   };
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = async (useCli = false) => {
     setIsAnalyzing(true);
     try {
-      await apiFetch(`/api/projects/${project.id}/analyze`, { method: 'POST' });
-      toast({ title: 'AI Analysis Complete', description: 'Environments have been reconfigured', duration: 5000 });
+      const analyzeUrl = useCli
+        ? `/api/projects/${project.id}/analyze-cli`
+        : `/api/projects/${project.id}/analyze`;
+      await apiFetch(analyzeUrl, { method: 'POST' });
+      const label = useCli ? 'Claude Code CLI Analysis' : 'AI Analysis';
+      toast({ title: `${label} Complete`, description: 'Environments have been reconfigured', duration: 5000 });
       await refreshProject();
       onProjectChanged();
     } catch (e: any) {
-      toast({ title: 'AI Analysis Failed', description: e.message, variant: 'destructive', duration: 7000 });
+      toast({ title: 'Analysis Failed', description: e.message, variant: 'destructive', duration: 7000 });
     } finally {
       setIsAnalyzing(false);
     }
@@ -1690,24 +1762,24 @@ function ProjectDetailSheet({
                 </div>
 
                 <div className="flex gap-2">
-                  <Button onClick={handleAnalyze} disabled={isAnalyzing || !llmReady} className="gap-2 flex-1">
-                    {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    {isAnalyzing ? 'Analyzing...' : 'Re-Analyze with AI'}
-                  </Button>
-                  {!llmReady && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" size="icon" disabled>
-                            <Info className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Configure LLM settings first to enable AI analysis</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button disabled={isAnalyzing} className="gap-2 flex-1">
+                        {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                        {isAnalyzing ? 'Analyzing...' : 'Re-Analyze'}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleAnalyze(false)} disabled={!llmReady}>
+                        <Settings className="h-4 w-4 mr-2" />
+                        LLM API Analysis
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAnalyze(true)}>
+                        <Terminal className="h-4 w-4 mr-2" />
+                        Claude Code CLI
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div>
@@ -1732,9 +1804,13 @@ function ProjectDetailSheet({
                     <Terminal className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-4">No environments configured</p>
                     <div className="flex gap-2 justify-center">
-                      <Button variant="outline" size="sm" onClick={handleAnalyze} disabled={isAnalyzing || !llmReady} className="gap-1">
+                      <Button variant="outline" size="sm" onClick={() => handleAnalyze(false)} disabled={isAnalyzing || !llmReady} className="gap-1">
                         {isAnalyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                         AI Auto-Configure
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleAnalyze(true)} disabled={isAnalyzing} className="gap-1">
+                        {isAnalyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Terminal className="h-3.5 w-3.5" />}
+                        Claude Code CLI
                       </Button>
                       <Button size="sm" onClick={() => { setEditEnv(null); setShowEnvDialog(true); }} className="gap-1">
                         <Plus className="h-3.5 w-3.5" />
