@@ -11,7 +11,7 @@ import {
   Cpu, BookOpen, Music, Gamepad2, BarChart3, Shield, Camera,
   Map, Cloud, Rocket, Puzzle, Folder, Flame, Laptop, Atom,
   Search, Wifi, WifiOff, Eye, EyeOff, TestTube, Copy,
-  HeartPulse, Timer, Filter, Pencil,
+  HeartPulse, Timer, Filter, Pencil, ArrowUpDown, LayoutGrid, List,
   type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -403,17 +403,24 @@ export default function DashboardPage() {
   const [showGatewayMonitor, setShowGatewayMonitor] = useState(false);
   const [gatewayStatus, setGatewayStatus] = useState<GatewayStatusData | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'stopped'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'status'>('date');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const refresh = useCallback(async () => {
+    setIsRefreshing(true);
     try {
       const data = await apiFetch<{ projects: Project[] }>('/api/projects');
       setProjects(data.projects);
+      setLastRefreshed(new Date());
     } catch (e: any) {
       toast({ title: 'Failed to load projects', description: e.message, variant: 'destructive' });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, [toast]);
 
@@ -554,12 +561,24 @@ export default function DashboardPage() {
     } else if (statusFilter === 'stopped') {
       result = result.filter(p => !p.environments.some(e => e.status === 'running'));
     }
+    // Sort
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'status') {
+        const aRunning = a.environments.some(e => e.status === 'running') ? 0 : 1;
+        const bRunning = b.environments.some(e => e.status === 'running') ? 0 : 1;
+        if (aRunning !== bRunning) return aRunning - bRunning;
+        return a.name.localeCompare(b.name);
+      }
+      // date - newest first
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
     return result;
-  }, [projects, searchQuery, statusFilter]);
+  }, [projects, searchQuery, statusFilter, sortBy]);
 
   return (
     <TooltipProvider delayDuration={300}>
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background transition-colors duration-300">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
@@ -606,8 +625,8 @@ export default function DashboardPage() {
               </TooltipContent>
             </Tooltip>
             <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={refresh} title="Refresh" aria-label="Refresh projects">
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={refresh} title="Refresh" aria-label="Refresh projects" disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
             <Button onClick={() => setShowAddDialog(true)} className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 dark:from-emerald-700 dark:to-teal-700 dark:hover:from-emerald-600 dark:hover:to-teal-600 shadow-md shadow-emerald-500/20">
               <Plus className="h-4 w-4" />
@@ -749,6 +768,45 @@ export default function DashboardPage() {
                     </button>
                   ))}
                 </div>
+                {/* Sort Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+                      <ArrowUpDown className="h-3 w-3" />
+                      <span className="hidden sm:inline">{sortBy === 'name' ? 'Name' : sortBy === 'status' ? 'Status' : 'Newest'}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setSortBy('date')} className={sortBy === 'date' ? 'bg-muted' : ''}>
+                      Newest first
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy('name')} className={sortBy === 'name' ? 'bg-muted' : ''}>
+                      Name (A-Z)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy('status')} className={sortBy === 'status' ? 'bg-muted' : ''}>
+                      Status (running first)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {/* View Mode Toggle */}
+                <div className="flex items-center rounded-lg border border-border/50 bg-muted/30 p-0.5">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-1 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    aria-label="Grid view"
+                    aria-pressed={viewMode === 'grid'}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-1 rounded-md transition-colors ${viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    aria-label="List view"
+                    aria-pressed={viewMode === 'list'}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                </div>
                 {(searchQuery || statusFilter !== 'all') && (
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {filteredProjects.length} of {projects.length}
@@ -756,13 +814,14 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4' : 'flex flex-col gap-2'}>
               <AnimatePresence mode="popLayout">
                 {filteredProjects.map((project) => (
                   <ProjectCard
                     key={project.id}
                     project={project}
                     lanIP={lanIP}
+                    viewMode={viewMode}
                     onOpen={() => handleOpenDetail(project.id)}
                     onOpenToEnv={() => handleOpenDetailToEnv(project.id)}
                     onDelete={() => setDeleteProject(project)}
@@ -789,9 +848,9 @@ export default function DashboardPage() {
 
       {/* Footer */}
       <footer className="border-t mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Web Dashboard v2.1</span>
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-1">
+          <span>Web Dashboard v2.2</span>
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center">
             {gatewayStatus?.agentGateways && gatewayStatus.agentGateways.filter(a => a.status === 'running').length > 0 && (
               <span className="flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
@@ -806,7 +865,7 @@ export default function DashboardPage() {
             )}
             <span className="flex items-center gap-1.5">
               <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Auto-refresh every 8s
+              {lastRefreshed ? `Updated ${lastRefreshed.toLocaleTimeString()}` : 'Loading...'}
             </span>
           </div>
         </div>
@@ -1392,6 +1451,7 @@ function EmptyState({ onAddProject }: { onAddProject: () => void }) {
 function ProjectCard({
   project,
   lanIP,
+  viewMode,
   onOpen,
   onOpenToEnv,
   onDelete,
@@ -1401,6 +1461,7 @@ function ProjectCard({
 }: {
   project: Project;
   lanIP: string;
+  viewMode: 'grid' | 'list';
   onOpen: () => void;
   onOpenToEnv: () => void;
   onDelete: () => void;
@@ -1412,6 +1473,20 @@ function ProjectCard({
   const totalCount = project.environments.length;
   const allRunning = totalCount > 0 && runningCount === totalCount;
   const hasRunning = runningCount > 0;
+  const isListView = viewMode === 'list';
+
+  const createdDate = new Date(project.createdAt);
+  const timeAgo = (() => {
+    const diffMs = Date.now() - createdDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 30) return `${diffDays}d ago`;
+    return createdDate.toLocaleDateString();
+  })();
 
   return (
     <motion.div
@@ -1422,9 +1497,9 @@ function ProjectCard({
       transition={{ duration: 0.2 }}
     >
       <Card
-        className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-border/50 hover:-translate-y-0.5 relative overflow-hidden py-2 gap-0.5 ${
-          hasRunning ? 'hover:border-emerald-500/30' : 'hover:border-border'
-        }`}
+        className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-border/50 hover:-translate-y-0.5 relative overflow-hidden ${
+          isListView ? 'py-1.5 gap-0' : 'py-2 gap-0.5'
+        } ${hasRunning ? 'hover:border-emerald-500/30' : 'hover:border-border'}`}
         onClick={onOpen}
         role="button"
         tabIndex={0}
@@ -1440,6 +1515,78 @@ function ProjectCard({
           hasRunning ? 'bg-gradient-to-b from-emerald-500 to-teal-500' : 'bg-muted-foreground/20'
         }`} />
 
+        {isListView ? (
+          /* List View Layout */
+          <div className="flex items-center gap-3 pl-3.5 pr-3 py-0.5">
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${
+              hasRunning
+                ? 'bg-gradient-to-br from-emerald-500/15 to-teal-500/15 border border-emerald-500/20'
+                : 'bg-muted/80 border border-border/50'
+            }`}>
+              <ProjectIcon icon={project.icon} className={`h-3.5 w-3.5 ${hasRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-sm truncate">{project.name}</h3>
+                <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${hasRunning ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+              </div>
+              <p className="text-[11px] text-muted-foreground truncate font-mono">{project.path}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {totalCount > 0 && (
+                <span className={`text-xs font-medium ${hasRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                  {runningCount}/{totalCount}
+                </span>
+              )}
+              <span className="text-[10px] text-muted-foreground/60">{timeAgo}</span>
+              {totalCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-6 w-6 ${allRunning ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    project.environments.forEach(env => {
+                      if (allRunning && env.status === 'running') {
+                        onAction(env.id, 'stop');
+                      } else if (!allRunning && env.status !== 'running') {
+                        onAction(env.id, 'start');
+                      }
+                    });
+                  }}
+                  disabled={actionLoading.size > 0}
+                  title={allRunning ? 'Stop All' : runningCount > 0 ? 'Start Remaining' : 'Start All'}
+                  aria-label={allRunning ? 'Stop all environments' : runningCount > 0 ? 'Start remaining environments' : 'Start all environments'}
+                >
+                  {actionLoading.size > 0 ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : allRunning ? (
+                    <Square className="h-3 w-3" />
+                  ) : (
+                    <Play className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                    <MoreVertical className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpen(); }}>
+                    <Settings className="h-4 w-4 mr-2" /> Manage
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        ) : (
+          /* Grid View Layout (original) */
+          <>
         <CardHeader className="pb-1 pl-3.5 pr-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2.5">
@@ -1575,7 +1722,10 @@ function ProjectCard({
                 <span className={`text-[11px] font-medium ${runningCount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                   {runningCount}/{totalCount} running
                 </span>
-                <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground/50">{timeAgo}</span>
+                  <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                </div>
               </div>
             </div>
           ) : (
@@ -1598,10 +1748,15 @@ function ProjectCard({
                   Add
                 </Button>
               </div>
-              <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground/50">{timeAgo}</span>
+                <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+              </div>
             </div>
           )}
         </CardContent>
+          </>
+        )}
       </Card>
     </motion.div>
   );
