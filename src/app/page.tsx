@@ -34,6 +34,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/theme-toggle';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -145,7 +146,7 @@ function CopyableUrl({ url, label }: { url: string; label?: string }) {
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            className={`transition-colors ${copied ? 'text-emerald-600' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`transition-colors ${copied ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'}`}
             onClick={handleCopy}
           >
             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
@@ -172,7 +173,7 @@ function CopyableText({ text, className }: { text: string; className?: string })
   };
   return (
     <button
-      className={`shrink-0 transition-colors ${copied ? 'text-emerald-600' : 'text-muted-foreground hover:text-foreground'} ${className || ''}`}
+      className={`shrink-0 transition-colors ${copied ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'} ${className || ''}`}
       onClick={handleCopy}
       title={`Copy: ${text}`}
     >
@@ -408,11 +409,11 @@ export default function DashboardPage() {
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-500/20 dark:shadow-emerald-500/10">
               <Server className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Web Dashboard</h1>
+              <h1 className="text-xl font-bold tracking-tight">Web Dashboard</h1>
               <p className="text-xs text-muted-foreground">Manage your web applications</p>
             </div>
           </div>
@@ -424,7 +425,7 @@ export default function DashboardPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowLlmSettings(true)}
-                    className={isLlmReady ? 'text-emerald-600 hover:text-emerald-700' : 'text-amber-500 hover:text-amber-600'}
+                    className={isLlmReady ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300' : 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300'}
                   >
                     {isLlmReady ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
                   </Button>
@@ -434,17 +435,18 @@ export default function DashboardPage() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={refresh} title="Refresh">
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button onClick={() => setShowAddDialog(true)} className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md shadow-emerald-500/20">
+            <Button onClick={() => setShowAddDialog(true)} className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 dark:from-emerald-700 dark:to-teal-700 dark:hover:from-emerald-600 dark:hover:to-teal-600 shadow-md shadow-emerald-500/20">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Add Project</span>
             </Button>
           </div>
         </div>
         {/* Gradient underline */}
-        <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+        <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/40 dark:via-emerald-400/30 to-transparent" />
       </header>
 
       {/* Stats Bar - Card style */}
@@ -453,7 +455,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-3">
             <div className="flex items-center gap-3 bg-background/80 rounded-xl px-4 py-2.5 border border-border/40 shadow-sm">
               <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Package className="h-4 w-4 text-emerald-600" />
+                <Package className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground leading-none">Projects</p>
@@ -462,7 +464,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-3 bg-background/80 rounded-xl px-4 py-2.5 border border-border/40 shadow-sm">
               <div className="h-8 w-8 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
-                <Globe className="h-4 w-4 text-teal-600" />
+                <Globe className="h-4 w-4 text-teal-600 dark:text-teal-400" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground leading-none">Environments</p>
@@ -471,12 +473,12 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-3 bg-background/80 rounded-xl px-4 py-2.5 border border-border/40 shadow-sm">
               <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
-                <Activity className="h-4 w-4 text-green-600" />
+                <Activity className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground leading-none">Running</p>
                 <div className="flex items-center gap-1.5">
-                  <p className="text-lg font-bold leading-tight text-emerald-600">{runningEnvs}</p>
+                  <p className="text-lg font-bold leading-tight text-emerald-600 dark:text-emerald-400">{runningEnvs}</p>
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
               </div>
@@ -554,8 +556,8 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4">
             {lanIP && (
               <span className="flex items-center gap-1.5">
-                <Wifi className="h-3 w-3 text-emerald-500" />
-                LAN: <code className="font-mono text-emerald-600">{lanIP}</code>
+                <Wifi className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
+                LAN: <code className="font-mono text-emerald-600 dark:text-emerald-400">{lanIP}</code>
               </span>
             )}
             <span className="flex items-center gap-1.5">
@@ -700,7 +702,7 @@ function LlmSettingsDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-emerald-500" />
+            <Settings className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
             LLM Configuration
           </DialogTitle>
           <DialogDescription>
@@ -738,7 +740,7 @@ function LlmSettingsDialog({
             </Select>
             {provider === 'zai' && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Wifi className="h-3 w-3 text-emerald-500" />
+                <Wifi className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
                 Built-in AI service, no configuration needed. Works out of the box.
               </p>
             )}
@@ -807,8 +809,8 @@ function LlmSettingsDialog({
           {testResult && (
             <div className={`rounded-lg p-3 text-sm flex items-start gap-2 ${
               testResult.success
-                ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
-                : 'bg-red-500/10 text-red-700 border border-red-500/20'
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
+                : 'bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20'
             }`}>
               {testResult.success ? <Check className="h-4 w-4 shrink-0 mt-0.5" /> : <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />}
               <span>{testResult.message}</span>
@@ -850,7 +852,7 @@ function EmptyState({ onAddProject }: { onAddProject: () => void }) {
       <p className="text-muted-foreground max-w-md mb-6">
         Add your first project by providing its directory path. You can use AI to automatically detect and configure startup settings.
       </p>
-      <Button onClick={onAddProject} size="lg" className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-500/20">
+      <Button onClick={onAddProject} size="lg" className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 dark:from-emerald-700 dark:to-teal-700 dark:hover:from-emerald-600 dark:hover:to-teal-600 shadow-lg shadow-emerald-500/20">
         <Plus className="h-5 w-5" />
         Add Your First Project
       </Button>
@@ -910,7 +912,7 @@ function ProjectCard({
                   ? 'bg-gradient-to-br from-emerald-500/15 to-teal-500/15 border border-emerald-500/20'
                   : 'bg-muted/80 border border-border/50'
               }`}>
-                <ProjectIcon icon={project.icon} className={`h-5 w-5 ${hasRunning ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                <ProjectIcon icon={project.icon} className={`h-5 w-5 ${hasRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
               </div>
               <div className="min-w-0">
                 <h3 className="font-semibold text-base truncate">{project.name}</h3>
@@ -923,7 +925,7 @@ function ProjectCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`h-8 w-8 ${allRunning ? 'text-red-500 hover:text-red-600 hover:bg-red-500/10' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10'}`}
+                  className={`h-8 w-8 ${allRunning ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     project.environments.forEach(env => {
@@ -996,7 +998,7 @@ function ProjectCard({
                               href={`http://localhost:${env.port}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-emerald-600 hover:text-emerald-700"
+                              className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
                               onClick={(e) => e.stopPropagation()}
                               title="Open localhost"
                             >
@@ -1010,7 +1012,7 @@ function ProjectCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={`h-7 px-2 text-xs gap-1 ${env.status === 'running' ? 'text-red-500 hover:text-red-600 hover:bg-red-500/10' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10'}`}
+                          className={`h-7 px-2 text-xs gap-1 ${env.status === 'running' ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             onAction(env.id, env.status === 'running' ? 'stop' : 'start');
@@ -1038,7 +1040,7 @@ function ProjectCard({
               </div>
               {/* Summary badge */}
               <div className="flex items-center gap-2 pt-1">
-                <Badge variant={runningCount > 0 ? 'default' : 'secondary'} className={runningCount > 0 ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : ''}>
+                <Badge variant={runningCount > 0 ? 'default' : 'secondary'} className={runningCount > 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : ''}>
                   <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${runningCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
                   {runningCount}/{totalCount} running
                 </Badge>
@@ -1048,14 +1050,14 @@ function ProjectCard({
           ) : (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-amber-600 border-amber-500/20">
+                <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/20">
                   <AlertCircle className="h-3 w-3 mr-1" />
                   Not configured
                 </Badge>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                  className="h-7 px-2 text-xs gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenToEnv();
@@ -1153,7 +1155,7 @@ function AddProjectDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-emerald-500" />
+            <Sparkles className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
             Add New Project
           </DialogTitle>
           <DialogDescription>
@@ -1164,8 +1166,8 @@ function AddProjectDialog({
           {/* LLM Status Banner */}
           <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
             llmReady
-              ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
-              : 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
+              : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'
           }`}>
             {llmReady ? (
               <>
@@ -1442,7 +1444,7 @@ function ProjectDetailSheet({
                             {env.status === 'running' && lanIP && (
                               <CopyableUrl url={`http://${lanIP}:${env.port}`} label="Copy LAN URL" />
                             )}
-                            <Badge variant={env.status === 'running' ? 'default' : 'secondary'} className={env.status === 'running' ? 'bg-emerald-500/10 text-emerald-600' : ''}>
+                            <Badge variant={env.status === 'running' ? 'default' : 'secondary'} className={env.status === 'running' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : ''}>
                               {env.status === 'running' ? 'Running' : 'Stopped'}
                             </Badge>
                           </div>
@@ -1602,7 +1604,7 @@ function EnvironmentPanel({
             <span className="font-medium text-sm">{env.name === 'production' ? 'Production' : env.name === 'development' ? 'Development' : env.name.charAt(0).toUpperCase() + env.name.slice(1)}</span>
             <span className="text-xs text-muted-foreground ml-2">Port {env.port}</span>
           </div>
-          <Badge variant={isRunning ? 'default' : 'secondary'} className={`text-xs ${isRunning ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : ''} ${!isRunning && env.name === 'production' ? 'border-orange-500/20 text-orange-600' : ''}`}>
+          <Badge variant={isRunning ? 'default' : 'secondary'} className={`text-xs ${isRunning ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : ''} ${!isRunning && env.name === 'production' ? 'border-orange-500/20 text-orange-600 dark:text-orange-400' : ''}`}>
             {isRunning ? 'Running' : 'Stopped'}
           </Badge>
         </div>
@@ -1644,7 +1646,7 @@ function EnvironmentPanel({
             <div className="space-y-1">
               {Object.entries(envVars).map(([key, value]) => (
                 <div key={key} className="flex items-center gap-2 text-xs font-mono">
-                  <span className="text-emerald-600">{key}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">{key}</span>
                   <span className="text-muted-foreground">=</span>
                   <span className="text-muted-foreground truncate">{value}</span>
                 </div>
@@ -1660,7 +1662,7 @@ function EnvironmentPanel({
                 href={`http://localhost:${env.port}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 hover:underline"
+                className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLink className="h-3 w-3" />
@@ -1674,7 +1676,7 @@ function EnvironmentPanel({
                   href={`http://${lanIP}:${env.port}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 hover:underline"
+                  className="inline-flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Wifi className="h-3 w-3" />
@@ -1693,7 +1695,7 @@ function EnvironmentPanel({
             variant={isRunning ? 'outline' : 'default'}
             onClick={() => onAction('start')}
             disabled={isLoading || isRunning}
-            className={isRunning ? '' : 'bg-emerald-600 hover:bg-emerald-700 gap-1'}
+            className={isRunning ? '' : 'bg-emerald-600 dark:bg-emerald-700 hover:bg-emerald-700 dark:hover:bg-emerald-600 gap-1'}
           >
             {actionLoading === `${env.id}-start` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
             Start

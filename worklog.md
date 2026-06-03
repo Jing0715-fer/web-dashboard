@@ -212,3 +212,39 @@ Stage Summary:
 - New search/filter, env delete confirmation, copy buttons added
 - Mobile accessibility improved
 - 8+ UX improvements applied
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Add dark theme support to Web Dashboard
+
+Work Log:
+- Created ThemeProvider component (src/components/theme-provider.tsx) wrapping next-themes
+- Created ThemeToggle component (src/components/theme-toggle.tsx) with Light/Dark/System dropdown
+- Updated layout.tsx to wrap app with ThemeProvider (attribute="class", defaultTheme="system", disableTransitionOnChange)
+- Updated globals.css dark mode CSS variables with emerald-tinted dark palette:
+  - Background uses oklch with hue 165 (emerald/teal undertone)
+  - Card, popover, muted all use subtle teal undertones
+  - Primary color is emerald-500 equivalent for consistency
+  - Ring color matches emerald accent
+  - Borders and inputs use lower opacity for subtlety
+- Added dark: color variants throughout page.tsx for emerald/teal/amber/red accents:
+  - text-emerald-600 → dark:text-emerald-400 (lighter for dark bg readability)
+  - text-emerald-700 → dark:text-emerald-400
+  - text-teal-600 → dark:text-teal-400
+  - text-amber-600/700 → dark:text-amber-400
+  - text-red-500/600 → dark:text-red-400
+  - hover variants updated similarly
+  - Gradient buttons with dark mode variants
+- Added ThemeToggle button in header (Sun/Moon icon with animated rotation)
+- Verified theme toggle works: Light, Dark, System modes all function correctly
+- Verified project detail sheet renders correctly in dark mode
+- All lint checks pass
+
+Stage Summary:
+- Dark theme fully implemented with next-themes
+- Theme persisted in localStorage automatically
+- Three theme options: Light, Dark, System (follows OS preference)
+- Dark palette uses subtle emerald/teal undertones to match the app's design language
+- All emerald/teal/amber/red accent colors have appropriate dark mode variants for readability
+- Theme toggle button in header with Sun/Moon animated icons
