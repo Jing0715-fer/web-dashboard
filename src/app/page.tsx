@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, RefreshCw, FolderOpen, Server, Trash2, Play, Square,
@@ -11,7 +11,7 @@ import {
   Cpu, BookOpen, Music, Gamepad2, BarChart3, Shield, Camera,
   Map, Cloud, Rocket, Puzzle, Folder, Flame, Laptop, Atom,
   Search, Wifi, WifiOff, Eye, EyeOff, TestTube, Copy,
-  HeartPulse, Timer,
+  HeartPulse, Timer, Filter, Pencil,
   type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -352,6 +352,8 @@ export default function DashboardPage() {
   const [lanIP, setLanIP] = useState('');
   const [showGatewayMonitor, setShowGatewayMonitor] = useState(false);
   const [gatewayStatus, setGatewayStatus] = useState<GatewayStatusData | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'stopped'>('all');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const refresh = useCallback(async () => {
@@ -459,7 +461,31 @@ export default function DashboardPage() {
 
   const isLlmReady = llmConfig?.provider === 'zai' || llmConfig?.provider === 'claude-code' || llmConfig?.hasApiKey;
 
-  const filteredProjects = projects.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.path.toLowerCase().includes(searchQuery.toLowerCase()));
+  // Ctrl+K to focus search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const filteredProjects = useMemo(() => {
+    let result = projects;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(p => p.name.toLowerCase().includes(q) || p.path.toLowerCase().includes(q));
+    }
+    if (statusFilter === 'running') {
+      result = result.filter(p => p.environments.some(e => e.status === 'running'));
+    } else if (statusFilter === 'stopped') {
+      result = result.filter(p => !p.environments.some(e => e.status === 'running'));
+    }
+    return result;
+  }, [projects, searchQuery, statusFilter]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -527,7 +553,7 @@ export default function DashboardPage() {
       {/* Stats Bar - Card style */}
       <div className="border-b bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
-          <div className="grid grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="flex items-center gap-2.5 bg-background/80 rounded-lg px-3 py-2 border border-border/40 shadow-sm">
               <div className="h-7 w-7 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <Package className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -568,7 +594,7 @@ export default function DashboardPage() {
               <div className="min-w-0">
                 <p className="text-[11px] text-muted-foreground leading-none">Gateway</p>
                 <div className="flex items-center gap-1.5">
-                  <p className={`text-sm font-bold leading-tight ${gatewayStatus?.caddyRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                  <p className={`text-base font-bold leading-tight ${gatewayStatus?.caddyRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                     {gatewayStatus?.caddyRunning ? 'Online' : gatewayStatus ? 'Offline' : '...'}
                   </p>
                   {gatewayStatus?.caddyRunning && <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
@@ -582,19 +608,38 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="py-2 gap-0.5">
+                <CardHeader className="pb-1 pl-3.5 pr-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-lg bg-muted animate-pulse" />
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                      <div className="h-3 w-48 bg-muted rounded animate-pulse" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 pl-3.5 pr-3 pb-1.5">
+                  <div className="space-y-1">
+                    <div className="h-3 w-full bg-muted rounded animate-pulse" />
+                    <div className="h-3 w-2/3 bg-muted rounded animate-pulse" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : projects.length === 0 ? (
           <EmptyState onAddProject={() => setShowAddDialog(true)} />
         ) : (
           <>
             {/* Search / Filter Bar */}
-            <div className="mb-4 flex items-center gap-3">
-              <div className="relative flex-1 max-w-sm">
+            <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-2.5">
+              <div className="relative flex-1 max-w-sm w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search projects..."
+                  ref={searchInputRef}
+                  placeholder="Search projects... (Ctrl+K)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 pr-9 h-9"
@@ -608,11 +653,30 @@ export default function DashboardPage() {
                   </button>
                 )}
               </div>
-              {searchQuery && (
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {filteredProjects.length} of {projects.length} projects
-                </span>
-              )}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {/* Status Filter Tabs */}
+                <div className="flex items-center rounded-lg border border-border/50 bg-muted/30 p-0.5">
+                  {[
+                    { key: 'all', label: 'All', count: projects.length },
+                    { key: 'running', label: 'Running', count: runningEnvs > 0 ? projects.filter(p => p.environments.some(e => e.status === 'running')).length : 0 },
+                    { key: 'stopped', label: 'Stopped', count: projects.filter(p => !p.environments.some(e => e.status === 'running')).length },
+                  ].map(({ key, label, count }) => (
+                    <button
+                      key={key}
+                      onClick={() => setStatusFilter(key as 'all' | 'running' | 'stopped')}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${statusFilter === key ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      {label}
+                      {count > 0 && <span className="ml-1 text-[10px] opacity-70">{count}</span>}
+                    </button>
+                  ))}
+                </div>
+                {(searchQuery || statusFilter !== 'all') && (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {filteredProjects.length} of {projects.length}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               <AnimatePresence mode="popLayout">
@@ -631,10 +695,14 @@ export default function DashboardPage() {
                 ))}
               </AnimatePresence>
             </div>
-            {searchQuery && filteredProjects.length === 0 && (
+            {(searchQuery || statusFilter !== 'all') && filteredProjects.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Search className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                <p className="text-muted-foreground">No projects match your search.</p>
+                <Filter className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                <p className="text-muted-foreground mb-2">No projects match your filter.</p>
+                <Button variant="outline" size="sm" onClick={() => { setSearchQuery(''); setStatusFilter('all'); }} className="gap-1.5">
+                  <X className="h-3.5 w-3.5" />
+                  Clear filters
+                </Button>
               </div>
             )}
           </>
@@ -1450,6 +1518,7 @@ function AddProjectDialog({
 }) {
   const [path, setPath] = useState('');
   const [name, setName] = useState('');
+  const [icon, setIcon] = useState('folder');
   const [analyzeMode, setAnalyzeMode] = useState<'api' | 'cli'>('api');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -1467,7 +1536,7 @@ function AddProjectDialog({
       const data = await apiFetch<{ project: Project }>('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: path.trim(), name: name.trim() || undefined }),
+        body: JSON.stringify({ path: path.trim(), name: name.trim() || undefined, icon }),
       });
 
       if (llmReady || analyzeMode === 'cli') {
@@ -1503,6 +1572,7 @@ function AddProjectDialog({
 
       setPath('');
       setName('');
+      setIcon('folder');
       onSuccess();
     } catch (e: any) {
       toast({ title: 'Failed to create project', description: e.message, variant: 'destructive', duration: 5000 });
@@ -1632,6 +1702,26 @@ function AddProjectDialog({
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Project Icon</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.keys(ICON_MAP).map(iconKey => (
+                <button
+                  key={iconKey}
+                  type="button"
+                  onClick={() => setIcon(iconKey)}
+                  className={`h-8 w-8 rounded-md border flex items-center justify-center transition-all ${
+                    icon === iconKey
+                      ? 'border-emerald-500 bg-emerald-500/10 shadow-sm'
+                      : 'border-border/50 hover:border-muted-foreground/30 hover:bg-muted/50'
+                  }`}
+                  title={iconKey}
+                >
+                  <ProjectIcon icon={iconKey} className={`h-4 w-4 ${icon === iconKey ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isCreating}>
@@ -1691,6 +1781,7 @@ function ProjectDetailSheet({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deleteEnv, setDeleteEnv] = useState<Environment | null>(null);
+  const [showEditProject, setShowEditProject] = useState(false);
 
   useEffect(() => { setActiveTab(initialTab); }, [initialTab]);
   const { toast } = useToast();
@@ -1822,11 +1913,14 @@ function ProjectDetailSheet({
               <div className="h-10 w-10 rounded-lg bg-muted/80 border border-border/50 flex items-center justify-center">
                 <ProjectIcon icon={project.icon} className="h-5 w-5 text-muted-foreground" />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <SheetTitle className="text-base">{project.name}</SheetTitle>
                 <SheetDescription className="sr-only">{project.path}</SheetDescription>
                 <p className="text-xs text-muted-foreground font-mono truncate">{project.path}</p>
               </div>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setShowEditProject(true)} title="Edit project">
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </SheetHeader>
 
@@ -1972,6 +2066,14 @@ function ProjectDetailSheet({
         open={showEnvDialog}
         onOpenChange={setShowEnvDialog}
         onSuccess={() => { setShowEnvDialog(false); handleProjectUpdate(); }}
+      />
+
+      {/* Edit Project Dialog */}
+      <EditProjectDialog
+        project={project}
+        open={showEditProject}
+        onOpenChange={setShowEditProject}
+        onSuccess={handleProjectUpdate}
       />
 
       {/* Log Viewer Dialog */}
@@ -2312,6 +2414,120 @@ function EnvironmentConfigDialog({
   );
 }
 
+// ============ Edit Project Dialog ============
+function EditProjectDialog({
+  project,
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  project: Project;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [icon, setIcon] = useState('folder');
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (open && project) {
+      setName(project.name);
+      setDescription(project.description);
+      setIcon(project.icon);
+    }
+  }, [open, project]);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      toast({ title: 'Name required', description: 'Project name cannot be empty', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await apiFetch(`/api/projects/${project.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), description: description.trim(), icon }),
+      });
+      toast({ title: 'Project updated', duration: 2000 });
+      onOpenChange(false);
+      onSuccess();
+    } catch (e: any) {
+      toast({ title: 'Failed to update project', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
+            Edit Project
+          </DialogTitle>
+          <DialogDescription>
+            Update the project name, description, and icon.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-name" className="text-sm font-medium">Project Name</Label>
+            <Input
+              id="edit-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-desc" className="text-sm font-medium">Description</Label>
+            <Textarea
+              id="edit-desc"
+              placeholder="A brief description of this project..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-h-[80px]"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Project Icon</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.keys(ICON_MAP).map(iconKey => (
+                <button
+                  key={iconKey}
+                  type="button"
+                  onClick={() => setIcon(iconKey)}
+                  className={`h-8 w-8 rounded-md border flex items-center justify-center transition-all ${
+                    icon === iconKey
+                      ? 'border-emerald-500 bg-emerald-500/10 shadow-sm'
+                      : 'border-border/50 hover:border-muted-foreground/30 hover:bg-muted/50'
+                  }`}
+                  title={iconKey}
+                >
+                  <ProjectIcon icon={iconKey} className={`h-4 w-4 ${icon === iconKey ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ============ Log Viewer Dialog ============
 function LogViewerDialog({
   project,
@@ -2503,7 +2719,9 @@ function GatewayMonitorDialog({
                         {gatewayStatus.cpuUsage}%
                       </span>
                     </div>
-                    <Progress value={gatewayStatus.cpuUsage} className="h-1.5" />
+                    <div className={gatewayStatus.cpuUsage > 80 ? '[&_[data-slot=progress-indicator]]:bg-red-500' : gatewayStatus.cpuUsage > 50 ? '[&_[data-slot=progress-indicator]]:bg-amber-500' : '[&_[data-slot=progress-indicator]]:bg-emerald-500'}>
+                      <Progress value={gatewayStatus.cpuUsage} className="h-1.5" />
+                    </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-1">
@@ -2512,7 +2730,9 @@ function GatewayMonitorDialog({
                         {gatewayStatus.memoryUsage.percentage}%
                       </span>
                     </div>
-                    <Progress value={gatewayStatus.memoryUsage.percentage} className="h-1.5" />
+                    <div className={gatewayStatus.memoryUsage.percentage > 80 ? '[&_[data-slot=progress-indicator]]:bg-red-500' : gatewayStatus.memoryUsage.percentage > 50 ? '[&_[data-slot=progress-indicator]]:bg-amber-500' : '[&_[data-slot=progress-indicator]]:bg-emerald-500'}>
+                      <Progress value={gatewayStatus.memoryUsage.percentage} className="h-1.5" />
+                    </div>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
                       {formatBytes(gatewayStatus.memoryUsage.used)} / {formatBytes(gatewayStatus.memoryUsage.total)}
                     </p>
