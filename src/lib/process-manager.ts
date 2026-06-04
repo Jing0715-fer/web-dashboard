@@ -12,6 +12,16 @@ const processes = new Map<string, ChildProcess>();
 const LOG_DIR = '/tmp/web-dashboard-logs';
 const MAX_LOG_SIZE = 1024 * 1024; // 1MB max log file size
 
+// Reserved ports that MUST NOT be killed by stopProcess / restartProcess
+// Protects the dashboard's own port, common dev tools, and system ports.
+const RESERVED_PORTS = new Set<number>([
+  3000, // web-dashboard self (its own dev server)
+  ...(process.env.RESERVED_PORTS?.split(',').map(p => parseInt(p.trim(), 10)).filter(n => !isNaN(n)) ?? []),
+]);
+
+// Reserved PID: the dashboard's own process. Never kill this one.
+const SELF_PID = process.pid;
+
 // Ensure log directory exists
 if (!existsSync(LOG_DIR)) {
   mkdirSync(LOG_DIR, { recursive: true });
@@ -130,12 +140,16 @@ export async function batchCheckPorts(ports: number[]): Promise<Set<number>> {
  */
 export async function getPidOnPort(port: number): Promise<number | null> {
   if (!isValidPort(port)) return null;
-  
+
+  // CRITICAL: never return the dashboard's own PID, regardless of port.
+  // This prevents the dashboard from killing itself.
+  if (RESERVED_PORTS.has(port)) return null;
+
   // Try lsof first
   try {
     const { stdout } = await execp(`lsof -iTCP:${port} -sTCP:LISTEN -n -P -t 2>/dev/null`);
     const pid = parseInt(stdout.trim().split('\n')[0], 10);
-    if (!isNaN(pid) && pid > 0) return pid;
+    if (!isNaN(pid) && pid > 0 && pid !== SELF_PID) return pid;
   } catch {
     // lsof not available
   }
@@ -209,8 +223,15 @@ function isCommandSafe(cmd: string): boolean {
     'celery', 'rq',
   ];
   
-  // Check if command starts with a safe prefix
-  const firstToken = trimmed.split(/\s+/)[0].split('/').pop() || '';
+  // Check if command starts with a safe prefix.
+  // Skip leading VAR=value env prefixes (e.g. "DATABASE_URL=... bun run start").
+  // The value may contain '/' (e.g. file paths) — we must NOT split the value on '/'.
+  let firstToken = trimmed.split(/\s+/)[0] || '';
+  if (/^[A-Z_][A-Z0-9_]*=/.test(firstToken)) {
+    const tokens = trimmed.split(/\s+/);
+    firstToken = tokens[1] || '';
+  }
+  firstToken = firstToken.split('/').pop() || '';
   const startsSafe = safePrefixes.some(prefix => {
     const prefixBase = prefix.split('/').pop() || prefix;
     return firstToken === prefixBase || firstToken.startsWith(prefixBase);
@@ -251,6 +272,11 @@ export async function startProcess(
     return { success: false, error: `Invalid port: ${port}` };
   }
 
+  // PROTECT RESERVED PORTS — never start a project on the dashboard's own port.
+  if (RESERVED_PORTS.has(port)) {
+    return { success: false, error: `Port ${port} is reserved and protected (cannot start a project on it)` };
+  }
+
   // Validate command safety
   if (!isCommandSafe(cmd)) {
     return { success: false, error: `Command not allowed for security reasons: ${cmd}` };
@@ -275,11 +301,25 @@ export async function startProcess(
   }
 
   try {
+    // Strip Next.js private/internal variables before passing to child process.
+    // These leak from the dashboard's own runtime (e.g. __NEXT_PRIVATE_STANDALONE_CONFIG
+    // points at the dashboard's standalone dir) and confuse other Next.js apps
+    // when they try to JSON.parse them as their own config.
+    const sanitizedParentEnv: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(process.env)) {
+      if (k.startsWith('__NEXT_PRIVATE_') || k === 'NEXT_DEPLOYMENT_ID' || k === '__NEXT_PROCESSED_ENV' || k === 'TURBOPACK') {
+        continue;
+      }
+      sanitizedParentEnv[k] = v as string | undefined;
+    }
+
     const env = {
-      ...process.env,
+      ...sanitizedParentEnv,
       ...envVars,
       PORT: String(port),
-      HOST: '0.0.0.0', // Bind to all interfaces for LAN access
+      // Next.js / bun / node all check HOSTNAME; some also check HOST. Set both.
+      HOSTNAME: '0.0.0.0',
+      HOST: '0.0.0.0',
     };
 
     const { useShell, command, args } = parseCommand(cmd);
@@ -357,6 +397,15 @@ export async function stopProcess(
 ): Promise<{ success: boolean; error?: string }> {
   if (!isValidPort(port)) {
     return { success: false, error: `Invalid port: ${port}` };
+  }
+
+  // PROTECT RESERVED PORTS — never kill processes listening on these.
+  // Prevents the dashboard from killing itself, its peers, or system services.
+  if (RESERVED_PORTS.has(port)) {
+    appendLog(getLogKey(projectId, envName),
+      `[${new Date().toISOString()}] ⛔ Refused to kill port ${port} (reserved). ` +
+      `Set RESERVED_PORTS env to override.`);
+    return { success: false, error: `Port ${port} is reserved and protected from being killed` };
   }
   
   const key = getLogKey(projectId, envName);

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { batchCheckPorts } from '@/lib/process-manager';
+import { SELF_PROJECT_PATHS } from '@/lib/self-guard';
 
 // GET /api/projects - List all projects with environments and status
+// Excludes the dashboard's own project from the list.
 export async function GET() {
   try {
     const projects = await db.project.findMany({
+      where: { path: { notIn: [...SELF_PROJECT_PATHS] } },
       include: { environments: true },
       orderBy: { updatedAt: 'desc' },
     });

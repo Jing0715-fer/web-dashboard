@@ -221,12 +221,14 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 // ============ Copyable URL ============
+// Primary action: open the URL in a new tab. Secondary action (small copy icon): copy to clipboard.
 function CopyableUrl({ url, label }: { url: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -238,20 +240,40 @@ function CopyableUrl({ url, label }: { url: string; label?: string }) {
   };
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          className={`transition-colors ${copied ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'}`}
-          onClick={handleCopy}
-          aria-label={label || 'Copy URL'}
-        >
-          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={4}>
-        <p>{label || 'Copy URL'}: <code className="font-mono text-xs">{url}</code></p>
-      </TooltipContent>
-    </Tooltip>
+    <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+            aria-label={label || 'Open URL'}
+            title={`Open ${url}`}
+          >
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
+          <p>Open: <code className="font-mono text-xs">{url}</code></p>
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className={`transition-colors ${copied ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground hover:text-foreground'}`}
+            onClick={handleCopy}
+            aria-label={`Copy ${url}`}
+            title="Copy URL"
+          >
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
+          <p>Copy: <code className="font-mono text-xs">{url}</code></p>
+        </TooltipContent>
+      </Tooltip>
+    </div>
   );
 }
 
@@ -509,17 +531,35 @@ export default function DashboardPage() {
     setShowDetailSheet(true);
   };
 
-  const handleCardAction = async (projectId: string, envId: string, action: 'start' | 'stop') => {
+  const handleCardAction = async (projectId: string, envId: string, action: 'start' | 'stop' | 'restart') => {
     setCardActionLoading(prev => new Set(prev).add(envId));
     try {
-      const result = await apiFetch<{ ok: boolean; error?: string }>(
-        `/api/projects/${projectId}/environments/${envId}/${action}`,
-        { method: 'POST' }
-      );
-      if (result.ok === false && result.error) {
-        toast({ title: `${action} failed`, description: result.error, variant: 'destructive', duration: 5000 });
+      if (action === 'restart') {
+        // Stop then start
+        await apiFetch<{ ok: boolean; error?: string }>(
+          `/api/projects/${projectId}/environments/${envId}/stop`,
+          { method: 'POST' }
+        );
+        await new Promise(r => setTimeout(r, 1000));
+        const result = await apiFetch<{ ok: boolean; error?: string }>(
+          `/api/projects/${projectId}/environments/${envId}/start`,
+          { method: 'POST' }
+        );
+        if (result.ok === false && result.error) {
+          toast({ title: 'Restart failed', description: result.error, variant: 'destructive', duration: 5000 });
+        } else {
+          toast({ title: 'Restarted', duration: 2000 });
+        }
       } else {
-        toast({ title: `${action === 'start' ? 'Started' : 'Stopped'}`, duration: 2000 });
+        const result = await apiFetch<{ ok: boolean; error?: string }>(
+          `/api/projects/${projectId}/environments/${envId}/${action}`,
+          { method: 'POST' }
+        );
+        if (result.ok === false && result.error) {
+          toast({ title: `${action} failed`, description: result.error, variant: 'destructive', duration: 5000 });
+        } else {
+          toast({ title: `${action === 'start' ? 'Started' : 'Stopped'}`, duration: 2000 });
+        }
       }
       refresh();
     } catch (e: any) {
@@ -1465,7 +1505,7 @@ function ProjectCard({
   onOpen: () => void;
   onOpenToEnv: () => void;
   onDelete: () => void;
-  onAction: (envId: string, action: 'start' | 'stop') => void;
+  onAction: (envId: string, action: 'start' | 'stop' | 'restart') => void;
   onPortChange: () => void;
   actionLoading: Set<string>;
 }) {
@@ -1567,6 +1607,16 @@ function ProjectCard({
                   )}
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                title="Delete project"
+                aria-label="Delete project"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" className="h-6 w-6 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity">
@@ -1632,6 +1682,16 @@ function ProjectCard({
                   )}
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                title="Delete project"
+                aria-label="Delete project"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" className="h-7 w-7 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity">
@@ -1677,7 +1737,20 @@ function ProjectCard({
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         {env.status === 'running' && (
-                          <>
+                          env.name === 'dev' ? (
+                            <a
+                              href={`http://localhost:${env.port}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Open localhost:${env.port}`}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : lanIP ? (
+                            <CopyableUrl url={`http://${lanIP}:${env.port}`} label="Open LAN URL" />
+                          ) : (
                             <a
                               href={`http://localhost:${env.port}`}
                               target="_blank"
@@ -1688,10 +1761,22 @@ function ProjectCard({
                             >
                               <ExternalLink className="h-3 w-3" />
                             </a>
-                            {lanIP && (
-                              <CopyableUrl url={`http://${lanIP}:${env.port}`} label="Copy LAN URL" />
-                            )}
-                          </>
+                          )
+                        )}
+                        {env.status === 'running' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 hover:bg-amber-500/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAction(env.id, 'restart');
+                            }}
+                            disabled={isLoading}
+                            title="Restart"
+                          >
+                            {isLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <RotateCw className="h-2.5 w-2.5" />}
+                          </Button>
                         )}
                         <Button
                           variant="ghost"

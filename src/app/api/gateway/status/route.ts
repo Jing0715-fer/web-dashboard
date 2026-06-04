@@ -71,15 +71,15 @@ const KNOWN_AGENT_GATEWAYS: Array<{
     name: 'openclaw',
     displayName: 'OpenClaw',
     description: 'OpenClaw agent tool service',
-    port: 19001,
+    port: 18789,
     processHint: 'openclaw',
     icon: 'puzzle',
   },
   {
     name: 'hermes',
     displayName: 'Hermes',
-    description: 'Hermes agent tool service',
-    port: 19006,
+    description: 'Hermes agent tool service (hermes_cli dashboard)',
+    port: 9120,
     processHint: 'hermes',
     icon: 'zap',
   },
@@ -112,12 +112,25 @@ async function getCaddyVersion(): Promise<string> {
 }
 
 async function isPortListening(port: number): Promise<boolean> {
+  // Try lsof first (most reliable on macOS)
+  try {
+    const { stdout } = await execp(`lsof -iTCP:${port} -sTCP:LISTEN -t 2>/dev/null`);
+    if (stdout.trim().length > 0) return true;
+  } catch { /* ignore */ }
+
+  // Try netstat (macOS built-in, no flags needed)
+  try {
+    const { stdout } = await execp(`netstat -an 2>/dev/null | grep -E '\\.${port} .*LISTEN'`);
+    if (stdout.trim().length > 0) return true;
+  } catch { /* ignore */ }
+
+  // Try ss (Linux, not always present on macOS)
   try {
     const { stdout } = await execp(`ss -tlnp 2>/dev/null | grep ':${port} '`);
-    return stdout.trim().length > 0;
-  } catch {
-    return false;
-  }
+    if (stdout.trim().length > 0) return true;
+  } catch { /* ignore */ }
+
+  return false;
 }
 
 async function getCaddyUptimeSeconds(): Promise<number> {

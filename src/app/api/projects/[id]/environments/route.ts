@@ -29,6 +29,19 @@ export async function POST(
       return NextResponse.json({ error: 'Port must be between 1 and 65535' }, { status: 400 });
     }
 
+    // Block reserved ports (e.g. 3000 for web-dashboard itself)
+    const reservedPorts = new Set<number>([
+      3000,
+      ...(process.env.RESERVED_PORTS?.split(',').map(p => parseInt(p.trim(), 10)).filter(n => !isNaN(n)) ?? []),
+    ]);
+    if (reservedPorts.has(portNum)) {
+      return NextResponse.json(
+        { error: `Port ${portNum} is reserved (cannot bind a project to the dashboard's own port). ` +
+                  `Use a different port, e.g. 4000-4999.` },
+        { status: 400 }
+      );
+    }
+
     // Check for duplicate environment name
     const existing = await db.environment.findFirst({
       where: { projectId: id, name },
