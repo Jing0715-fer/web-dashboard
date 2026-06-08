@@ -17,6 +17,9 @@ node_modules
 /.next/
 /out/
 
+# standalone build output (contains .env and db)
+/standalone/
+
 # production
 /build
 

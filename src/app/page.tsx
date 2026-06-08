@@ -230,12 +230,25 @@ function CopyableUrl({ url, label }: { url: string; label?: string }) {
     e.stopPropagation();
     e.preventDefault();
     try {
-      await navigator.clipboard.writeText(url);
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(url);
+      } else {
+        // Fallback for insecure contexts
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
       setCopied(true);
       toast({ title: 'URL copied', description: url, duration: 2000 });
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      toast({ title: 'Failed to copy', variant: 'destructive' });
+    } catch (err) {
+      // Silently fail - don't crash the app
+      setCopied(false);
     }
   };
 
@@ -424,11 +437,14 @@ export default function DashboardPage() {
   const [lanIP, setLanIP] = useState('');
   const [showGatewayMonitor, setShowGatewayMonitor] = useState(false);
   const [gatewayStatus, setGatewayStatus] = useState<GatewayStatusData | null>(null);
+  const [openclawDashboardUrl, setOpenclawDashboardUrl] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'stopped'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'status'>('date');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRebuilding, setIsRebuilding] = useState(false);
+  const [rebuildingProjectId, setRebuildingProjectId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -445,6 +461,68 @@ export default function DashboardPage() {
       setIsRefreshing(false);
     }
   }, [toast]);
+
+  const rebuild = useCallback(async () => {
+    setIsRebuilding(true);
+    try {
+      const res = await fetch('/api/rebuild', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Rebuilding...', description: 'Build started, server will restart automatically.', duration: 5000 });
+        // Poll for server readiness
+        let attempts = 0;
+        const checkReady = setInterval(async () => {
+          attempts++;
+          try {
+            const r = await fetch('/api/projects');
+            if (r.ok) {
+              clearInterval(checkReady);
+              toast({ title: 'Rebuild complete', description: 'Dashboard is back online.', duration: 3000 });
+              refresh();
+            }
+          } catch {
+            // Server not ready yet
+          }
+          if (attempts > 30) {
+            clearInterval(checkReady);
+            toast({ title: 'Rebuild timeout', description: 'Server may still be starting. Refresh manually.', variant: 'destructive' });
+          }
+        }, 2000);
+      } else {
+        toast({ title: 'Rebuild failed', description: data.error || 'Unknown error', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Rebuild failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsRebuilding(false);
+    }
+  }, [toast, refresh]);
+
+  const handleRebuild = useCallback(async (projectId: string, projectName: string) => {
+    setRebuildingProjectId(projectId);
+    try {
+      const res = await fetch('/api/rebuild-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: `Rebuilding ${projectName}...`, description: data.message, duration: 5000 });
+        // Poll for the project's port to come back
+        setTimeout(() => {
+          refresh();
+          setRebuildingProjectId(null);
+        }, 5000);
+      } else {
+        toast({ title: 'Rebuild failed', description: data.error || 'Unknown error', variant: 'destructive' });
+        setRebuildingProjectId(null);
+      }
+    } catch (e: any) {
+      toast({ title: 'Rebuild failed', description: e.message, variant: 'destructive' });
+      setRebuildingProjectId(null);
+    }
+  }, [toast, refresh]);
 
   const fetchLlmConfig = useCallback(async () => {
     try {
@@ -473,11 +551,24 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Fetch OpenClaw dashboard URL with token
+  const fetchOpenClawDashboardUrl = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ url: string; hasToken: boolean }>('/api/openclaw/dashboard-url');
+      if (data.hasToken) {
+        setOpenclawDashboardUrl(data.url);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     refresh();
     fetchLlmConfig();
     fetchNetworkInfo();
     fetchGatewayStatus();
+    fetchOpenClawDashboardUrl();
     let intervalId: ReturnType<typeof setInterval>;
     let gatewayIntervalId: ReturnType<typeof setInterval>;
     const startIntervals = () => {
@@ -488,6 +579,7 @@ export default function DashboardPage() {
       if (document.visibilityState === 'visible') {
         refresh();
         fetchGatewayStatus();
+        fetchOpenClawDashboardUrl();
         startIntervals();
       } else {
         clearInterval(intervalId);
@@ -501,7 +593,7 @@ export default function DashboardPage() {
       clearInterval(gatewayIntervalId);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [refresh, fetchLlmConfig, fetchNetworkInfo, fetchGatewayStatus]);
+  }, [refresh, fetchLlmConfig, fetchNetworkInfo, fetchGatewayStatus, fetchOpenClawDashboardUrl]);
 
   const handleDeleteProject = async () => {
     if (!deleteProject) return;
@@ -668,7 +760,24 @@ export default function DashboardPage() {
             <Button variant="ghost" size="icon" onClick={refresh} title="Refresh" aria-label="Refresh projects" disabled={isRefreshing}>
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button onClick={() => setShowAddDialog(true)} className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 dark:from-emerald-700 dark:to-teal-700 dark:hover:from-emerald-600 dark:hover:to-teal-600 shadow-md shadow-emerald-500/20">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={rebuild}
+                  disabled={isRebuilding}
+                  title="Rebuild & Restart"
+                  aria-label="Rebuild and restart"
+                >
+                  {isRebuilding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Rebuild & Restart Dashboard</p>
+              </TooltipContent>
+            </Tooltip>
+            <Button onClick={() => setShowAddDialog(true)} className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-600 dark:from-emerald-700 dark:to-teal-700 dark:hover:from-emerald-600 dark:hover:to-teal-600 shadow-md shadow-emerald-500/20">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Add Project</span>
             </Button>
@@ -867,7 +976,10 @@ export default function DashboardPage() {
                     onDelete={() => setDeleteProject(project)}
                     onAction={(envId, action) => handleCardAction(project.id, envId, action)}
                     onPortChange={refresh}
+                    onRebuild={() => handleRebuild(project.id, project.name)}
                     actionLoading={cardActionLoading}
+                    openclawDashboardUrl={openclawDashboardUrl}
+                    rebuildingProjectId={rebuildingProjectId}
                   />
                 ))}
               </AnimatePresence>
@@ -889,8 +1001,17 @@ export default function DashboardPage() {
       {/* Footer */}
       <footer className="border-t mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-1">
-          <span>Web Dashboard v2.2</span>
-          <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center">
+            <span>Web Dashboard v2.2</span>
+            <button
+              onClick={rebuild}
+              disabled={isRebuilding}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              title="Rebuild & Restart"
+            >
+              {isRebuilding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
+              {isRebuilding ? 'Building...' : 'Rebuild'}
+            </button>
+            <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center">
             {gatewayStatus?.agentGateways && gatewayStatus.agentGateways.filter(a => a.status === 'running').length > 0 && (
               <span className="flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
@@ -947,6 +1068,7 @@ export default function DashboardPage() {
         llmReady={isLlmReady}
         lanIP={lanIP}
         initialTab={detailInitialTab}
+        openclawDashboardUrl={openclawDashboardUrl}
       />
 
       {/* Delete Confirmation */}
@@ -1497,7 +1619,10 @@ function ProjectCard({
   onDelete,
   onAction,
   onPortChange,
+  onRebuild,
   actionLoading,
+  openclawDashboardUrl,
+  rebuildingProjectId,
 }: {
   project: Project;
   lanIP: string;
@@ -1507,7 +1632,10 @@ function ProjectCard({
   onDelete: () => void;
   onAction: (envId: string, action: 'start' | 'stop' | 'restart') => void;
   onPortChange: () => void;
+  onRebuild: () => void;
   actionLoading: Set<string>;
+  openclawDashboardUrl: string | null;
+  rebuildingProjectId: string | null;
 }) {
   const runningCount = project.environments.filter(e => e.status === 'running').length;
   const totalCount = project.environments.length;
@@ -1535,10 +1663,11 @@ function ProjectCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
+      className="h-full"
     >
       <Card
-        className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-border/50 hover:-translate-y-0.5 relative overflow-hidden ${
-          isListView ? 'py-1.5 gap-0' : 'py-2 gap-0.5'
+        className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border-border/50 hover:-translate-y-0.5 relative overflow-hidden flex flex-col ${
+          isListView ? 'py-1.5 gap-0' : 'py-2 gap-0.5 h-full'
         } ${hasRunning ? 'hover:border-emerald-500/30' : 'hover:border-border'}`}
         onClick={onOpen}
         role="button"
@@ -1570,7 +1699,7 @@ function ProjectCard({
                 <h3 className="font-semibold text-sm truncate">{project.name}</h3>
                 <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${hasRunning ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
               </div>
-              <p className="text-[11px] text-muted-foreground truncate font-mono">{project.path}</p>
+                <p className="text-[11px] text-muted-foreground truncate font-mono" title={project.path}>{project.path}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {totalCount > 0 && (
@@ -1639,7 +1768,7 @@ function ProjectCard({
           <>
         <CardHeader className="pb-1 pl-3.5 pr-3">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${
                 hasRunning
                   ? 'bg-gradient-to-br from-emerald-500/15 to-teal-500/15 border border-emerald-500/20'
@@ -1649,7 +1778,7 @@ function ProjectCard({
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-sm truncate">{project.name}</h3>
-                <p className="text-[11px] text-muted-foreground truncate flex-1 font-mono">{project.path}</p>
+                <p className="text-[11px] text-muted-foreground truncate flex-1 font-mono" title={project.path}>{project.path}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -1710,7 +1839,7 @@ function ProjectCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-0 pl-3.5 pr-3 pb-1.5">
+        <CardContent className="pt-0 pl-3.5 pr-3 pb-1.5 flex-1 flex flex-col justify-between">
           {project.description && (
             <p className="text-[11px] text-muted-foreground mb-1 line-clamp-2">{project.description}</p>
           )}
@@ -1736,8 +1865,24 @@ function ProjectCard({
                         />
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {env.status === 'running' && (
-                          env.name === 'dev' ? (
+                        {env.status === 'running' && (() => {
+                          const isOpenClaw = env.cmd.includes('openclaw') || project.path.includes('openclaw');
+                          const dashboardUrl = (isOpenClaw && openclawDashboardUrl) ? openclawDashboardUrl : null;
+                          if (dashboardUrl) {
+                            return (
+                              <a
+                                href={dashboardUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+                                onClick={(e) => e.stopPropagation()}
+                                title="OpenClaw Dashboard"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            );
+                          }
+                          return env.name === 'dev' ? (
                             <a
                               href={`http://localhost:${env.port}`}
                               target="_blank"
@@ -1761,8 +1906,8 @@ function ProjectCard({
                             >
                               <ExternalLink className="h-3 w-3" />
                             </a>
-                          )
-                        )}
+                          );
+                        })()}
                         {env.status === 'running' && (
                           <Button
                             variant="ghost"
@@ -1775,7 +1920,26 @@ function ProjectCard({
                             disabled={isLoading}
                             title="Restart"
                           >
-                            {isLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <RotateCw className="h-2.5 w-2.5" />}
+                            {isLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <RotateCcw className="h-2.5 w-2.5" />}
+                          </Button>
+                        )}
+                        {env.name === 'production' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-500/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRebuild();
+                            }}
+                            disabled={rebuildingProjectId === project.id}
+                            title="Rebuild and restart production"
+                          >
+                            {rebuildingProjectId === project.id ? (
+                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                            ) : (
+                              <Rocket className="h-2.5 w-2.5" />
+                            )}
                           </Button>
                         )}
                         <Button
@@ -2093,6 +2257,7 @@ function ProjectDetailSheet({
   llmReady,
   lanIP,
   initialTab,
+  openclawDashboardUrl,
 }: {
   projectId: string | null;
   open: boolean;
@@ -2101,6 +2266,7 @@ function ProjectDetailSheet({
   llmReady: boolean;
   lanIP: string;
   initialTab: string;
+  openclawDashboardUrl: string | null;
 }) {
   const [project, setProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -2379,6 +2545,7 @@ function ProjectDetailSheet({
                       onEdit={() => { setEditEnv(env); setShowEnvDialog(true); }}
                       onDelete={() => setDeleteEnv(env)}
                       onViewLogs={() => setShowLogViewer(env)}
+                      openclawDashboardUrl={openclawDashboardUrl}
                     />
                   ))
                 )}
@@ -2446,6 +2613,7 @@ function EnvironmentPanel({
   onEdit,
   onDelete,
   onViewLogs,
+  openclawDashboardUrl,
 }: {
   environment: Environment;
   projectPath: string;
@@ -2455,6 +2623,7 @@ function EnvironmentPanel({
   onEdit: () => void;
   onDelete: () => void;
   onViewLogs: () => void;
+  openclawDashboardUrl: string | null;
 }) {
   const isLoading = actionLoading === `${env.id}-start` || actionLoading === `${env.id}-stop` || actionLoading === `${env.id}-restart`;
   const isRunning = env.status === 'running';
@@ -2521,22 +2690,26 @@ function EnvironmentPanel({
           </div>
         )}
 
-        {isRunning && (
+        {isRunning && (() => {
+          // Check if this is an openclaw environment
+          const isOpenClaw = env.cmd.includes('openclaw') || projectPath.includes('openclaw');
+          const dashboardUrl = (isOpenClaw && openclawDashboardUrl) ? openclawDashboardUrl : `http://localhost:${env.port}`;
+          return (
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <a
-                href={`http://localhost:${env.port}`}
+                href={dashboardUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLink className="h-3 w-3" />
-                localhost:{env.port}
+                {isOpenClaw && openclawDashboardUrl ? 'OpenClaw Dashboard' : `localhost:${env.port}`}
               </a>
-              <CopyableUrl url={`http://localhost:${env.port}`} label="Copy URL" />
+              <CopyableUrl url={dashboardUrl} label="Copy URL" />
             </div>
-            {lanIP && (
+            {lanIP && !isOpenClaw && (
               <div className="flex items-center gap-2">
                 <a
                   href={`http://${lanIP}:${env.port}`}
@@ -2552,7 +2725,8 @@ function EnvironmentPanel({
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* Action Buttons */}
         <div className="flex gap-1.5 pt-0.5">
