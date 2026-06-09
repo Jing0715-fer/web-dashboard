@@ -54,7 +54,7 @@ export async function POST() {
     console.log('[Rebuild] Starting build...');
     const { stdout: buildOut, stderr: buildErr } = await execAsync('bun run build', {
       cwd: projectDir,
-      env: buildEnv(),
+      env: buildEnv({ NODE_ENV: 'production' }),
       timeout: 300000,
     });
     console.log('[Rebuild] Build output:', buildOut);

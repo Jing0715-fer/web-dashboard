@@ -80,7 +80,8 @@ CRITICAL Rules:
    - Vite/Vue: test uses 'npm run dev' (port 5173), production uses 'npm run build && npm run preview' (port 4173)
    - React: test uses 'npm start' (port 3001), production uses 'npx serve -s build' (port 3000)
    - Python/Flask: test uses 'flask run' (port 5001), production uses 'gunicorn' (port 5000)
-4. Use 'bun run' instead of 'npm run' if the project uses bun (has bun.lock or bun.lockb)
+4. Use 'bun run' instead of 'npm run' if the project uses bun (has bun.lock or bun.lockb).
+   IMPORTANT: For Next.js standalone mode (output: "standalone" in next.config), the production command MUST use 'node' not 'bun' to run .next/standalone/server.js — it is a Node.js CJS module.
 5. Environment variables should have proper values:
    - NODE_ENV: "development" for test, "production" for production
    - HOST: "0.0.0.0" (NOT "0.0.0.0.0" - exactly four octets)

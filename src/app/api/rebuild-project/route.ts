@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       console.log(`[RebuildProject] Building Next.js project ${project.name}...`);
       const { stdout: buildOut, stderr: buildErr } = await execAsync('bun run build', {
         cwd: projectDir,
-        env: buildEnv(),
+        env: buildEnv({ NODE_ENV: 'production' }),
         timeout: 300000,
       });
       console.log('[RebuildProject] Build output:', buildOut);

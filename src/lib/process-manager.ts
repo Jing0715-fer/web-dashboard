@@ -184,9 +184,10 @@ export async function getPidOnPort(port: number): Promise<number | null> {
  * For complex commands (with &&, ||, pipes), use shell mode.
  */
 function parseCommand(cmd: string): { useShell: boolean; command: string; args: string[] } {
-  // If the command contains shell operators, use shell mode
+  // If the command contains shell operators or variable substitutions, use shell mode
   const shellOperators = ['&&', '||', '|', '>', '<', '>>', '<<', ';', '$(', '`'];
-  const needsShell = shellOperators.some(op => cmd.includes(op));
+  const hasVarSubstitution = /\$\{?[A-Z_][A-Z0-9_]*\}?/.test(cmd);
+  const needsShell = shellOperators.some(op => cmd.includes(op)) || hasVarSubstitution;
 
   if (needsShell) {
     return { useShell: true, command: '/bin/sh', args: ['-c', cmd] };
@@ -313,7 +314,7 @@ export async function startProcess(
       sanitizedParentEnv[k] = v as string | undefined;
     }
 
-    const env = {
+    const env: NodeJS.ProcessEnv = {
       ...sanitizedParentEnv,
       ...envVars,
       PORT: String(port),
