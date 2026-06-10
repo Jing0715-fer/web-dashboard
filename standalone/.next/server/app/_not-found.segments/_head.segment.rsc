@@ -1,0 +1,6 @@
+1:"$Sreact.fragment"
+2:I[97367,["/_next/static/chunks/ee4f8a135a91a023.js","/_next/static/chunks/70e296cf26afe83b.js","/_next/static/chunks/33d3f2c0cda968c7.js"],"ViewportBoundary"]
+3:I[97367,["/_next/static/chunks/ee4f8a135a91a023.js","/_next/static/chunks/70e296cf26afe83b.js","/_next/static/chunks/33d3f2c0cda968c7.js"],"MetadataBoundary"]
+4:"$Sreact.suspense"
+5:I[27201,["/_next/static/chunks/ee4f8a135a91a023.js","/_next/static/chunks/70e296cf26afe83b.js","/_next/static/chunks/33d3f2c0cda968c7.js"],"IconMark"]
+0:{"buildId":"qa1FqFGK8CIJ7xfEwEBsX","rsc":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L2",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","div",null,{"hidden":true,"children":["$","$L3",null,{"children":["$","$4",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Web Dashboard - Project Manager"}],["$","meta","1",{"name":"description","content":"Manage your web applications, environments, and processes"}],["$","link","2",{"rel":"icon","href":"https://z-cdn.chatglm.cn/z-ai/static/logo.svg"}],["$","$L5","3",{}]]}]}]}],null]}],"loading":null,"isPartial":false}

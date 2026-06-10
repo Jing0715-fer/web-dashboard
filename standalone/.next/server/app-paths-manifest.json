@@ -1,0 +1,21 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/gateway/status/route": "app/api/gateway/status/route.js",
+  "/api/llm-config/detect-claude-code/route": "app/api/llm-config/detect-claude-code/route.js",
+  "/api/llm-config/route": "app/api/llm-config/route.js",
+  "/api/network-info/route": "app/api/network-info/route.js",
+  "/api/openclaw/dashboard-url/route": "app/api/openclaw/dashboard-url/route.js",
+  "/api/projects/[id]/analyze-cli/route": "app/api/projects/[id]/analyze-cli/route.js",
+  "/api/projects/[id]/analyze/route": "app/api/projects/[id]/analyze/route.js",
+  "/api/projects/[id]/environments/[envId]/logs/route": "app/api/projects/[id]/environments/[envId]/logs/route.js",
+  "/api/projects/[id]/environments/[envId]/restart/route": "app/api/projects/[id]/environments/[envId]/restart/route.js",
+  "/api/projects/[id]/environments/[envId]/route": "app/api/projects/[id]/environments/[envId]/route.js",
+  "/api/projects/[id]/environments/[envId]/start/route": "app/api/projects/[id]/environments/[envId]/start/route.js",
+  "/api/projects/[id]/environments/[envId]/stop/route": "app/api/projects/[id]/environments/[envId]/stop/route.js",
+  "/api/projects/[id]/environments/route": "app/api/projects/[id]/environments/route.js",
+  "/api/projects/[id]/route": "app/api/projects/[id]/route.js",
+  "/api/projects/route": "app/api/projects/route.js",
+  "/api/route": "app/api/route.js",
+  "/page": "app/page.js"
+}

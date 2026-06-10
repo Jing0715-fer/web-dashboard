@@ -1,0 +1,3 @@
+{
+  "/api/llm-config/detect-claude-code/route": "app/api/llm-config/detect-claude-code/route.js"
+}

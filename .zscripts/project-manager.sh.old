@@ -1,0 +1,400 @@
+#!/bin/bash
+#
+# project-manager.sh — 统一管理所有子项目
+#
+# 用法:
+#   ./project-manager.sh <command> [project] [port]
+#
+# 命令:
+#   dev [project] [port]       启动 dev 服务器
+#   build [project]            构建项目
+#   start [project] [port]     启动 production 服务器
+#   stop [project]             停止项目
+#   restart [project] [port]   重启项目
+#   rebuild [project] [port]   完整重建 (rm .next + build + start)
+#   status                     查看所有项目状态
+#   list                       列出所有管理的项目
+#
+# 项目: dashboard (默认), pdb-tracker, hermes-web, virtual-lab,
+#        pptx-template-editor, script-manager, all
+#
+# 端口约定: prod = dev + 1000 (除 dashboard/pdb-tracker外)
+#   dashboard             : dev 3000, prod 4000
+#   hermes-web            : dev 3001, prod 4001
+#   script-manager        : dev 3002, prod 4002
+#   pdb-tracker           : dev 3003, prod 4003
+#   pptx-template-editor  : dev 3005, prod 4005
+#   virtual-lab           : dev 3006, prod 4006
+#
+# 示例:
+#   ./project-manager.sh dev                       # dashboard dev @ 3000
+#   ./project-manager.sh dev pdb-tracker 3003      # pdb-tracker dev @ 3003
+#   ./project-manager.sh build all                 # 构建所有
+#   ./project-manager.sh start all                 # 启动所有
+#   ./project-manager.sh rebuild dashboard         # 完整重建
+#   ./project-manager.sh status                    # 查看状态
+#
+
+set -euo pipefail
+
+# ============================================================
+# 配置 — 用平行数组代替关联数组 (兼容 bash 3)
+# ============================================================
+PROJECT_NAMES=(
+  "dashboard"
+  "hermes-web"
+  "script-manager"
+  "pdb-tracker"
+  "pptx-template-editor"
+  "virtual-lab"
+)
+PROJECT_PATHS=(
+  "/Users/lijing/Projects/web-dashboard"
+  "/Users/lijing/Projects/hermes-web"
+  "/Users/lijing/Projects/script-manager"
+  "/Users/lijing/Projects/pdb-tracker-web-v3"
+  "/Users/lijing/Projects/pptx-template-editor"
+  "/Users/lijing/Projects/Virtual-lab"
+)
+PROJECT_PORTS=(3000 3001 3002 3003 3005 3006)
+
+LOG_DIR="/Users/lijing/Projects/.project-logs"
+PID_DIR="/Users/lijing/Projects/.project-pids"
+mkdir -p "$LOG_DIR" "$PID_DIR"
+
+# ============================================================
+# 查找项目索引
+# ============================================================
+find_project_index() {
+  local name="$1"
+  local i
+  for i in "${!PROJECT_NAMES[@]}"; do
+    if [ "${PROJECT_NAMES[$i]}" = "$name" ]; then
+      echo "$i"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# ============================================================
+# 工具函数
+# ============================================================
+
+log() {
+  echo "[$(date '+%H:%M:%S')] $*"
+}
+
+get_pid_file() {
+  echo "$PID_DIR/${1}.pid"
+}
+
+get_log_file() {
+  echo "$LOG_DIR/${1}.log"
+}
+
+is_running() {
+  local name="$1"
+  local pid_file
+  pid_file=$(get_pid_file "$name")
+  if [ -f "$pid_file" ]; then
+    local pid
+    pid=$(cat "$pid_file" 2>/dev/null)
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      echo "$pid"
+      return 0
+    fi
+    rm -f "$pid_file"
+  fi
+  return 1
+}
+
+wait_for_port() {
+  local port="$1"
+  local timeout="${2:-15}"
+  local count=0
+  while [ $count -lt $timeout ]; do
+    local code
+    code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$port/" 2>/dev/null || echo "000")
+    if echo "$code" | grep -qE "^[23]"; then
+      return 0
+    fi
+    sleep 1
+    count=$((count + 1))
+  done
+  return 1
+}
+
+# ============================================================
+# 项目操作
+# ============================================================
+
+do_dev() {
+  local name="$1"
+  local custom_port="${2:-}"
+  local idx
+  idx=$(find_project_index "$name") || { log "❌ 未知项目: $name"; return 1; }
+  local path="${PROJECT_PATHS[$idx]}"
+  local default_port="${PROJECT_PORTS[$idx]}"
+  local port="${custom_port:-$default_port}"
+  local pid_file
+  pid_file=$(get_pid_file "$name")
+  local log_file
+  log_file=$(get_log_file "$name")
+
+  local running_pid
+  if running_pid=$(is_running "$name"); then
+    log "⚠️  $name 已在运行 (PID: $running_pid)"
+    return 0
+  fi
+
+  # 先清理占用端口的进程
+  local existing
+  existing=$(lsof -ti:$port 2>/dev/null || true)
+  if [ -n "$existing" ]; then
+    log "   清理占用端口 $port 的进程: $existing"
+    echo "$existing" | xargs kill -TERM 2>/dev/null || true
+    sleep 1
+  fi
+
+  log "🚀 启动 $name dev @ port $port"
+  cd "$path"
+  PORT=$port nohup npm run dev > "$log_file" 2>&1 &
+  local pid=$!
+  echo "$pid" > "$pid_file"
+  log "   PID: $pid, 日志: $log_file"
+
+  if wait_for_port "$port" 20; then
+    log "✅ $name dev 已就绪 → http://localhost:$port"
+  else
+    log "⚠️  $name 启动中，请稍后检查: tail -f $log_file"
+  fi
+}
+
+do_build() {
+  local name="$1"
+  local idx
+  idx=$(find_project_index "$name") || { log "❌ 未知项目: $name"; return 1; }
+  local path="${PROJECT_PATHS[$idx]}"
+
+  log "🔨 构建 $name ..."
+  cd "$path"
+  npm run build 2>&1
+  log "✅ $name 构建完成"
+}
+
+do_start() {
+  local name="$1"
+  local custom_port="${2:-}"
+  local idx
+  idx=$(find_project_index "$name") || { log "❌ 未知项目: $name"; return 1; }
+  local path="${PROJECT_PATHS[$idx]}"
+  local default_port="${PROJECT_PORTS[$idx]}"
+  local port="${custom_port:-$default_port}"
+  local pid_file
+  pid_file=$(get_pid_file "$name")
+  local log_file
+  log_file=$(get_log_file "$name")
+
+  local running_pid
+  if running_pid=$(is_running "$name"); then
+    log "⚠️  $name 已在运行 (PID: $running_pid)"
+    return 0
+  fi
+
+  # 先清理占用端口的进程
+  local existing
+  existing=$(lsof -ti:$port 2>/dev/null || true)
+  if [ -n "$existing" ]; then
+    log "   清理占用端口 $port 的进程: $existing"
+    echo "$existing" | xargs kill -TERM 2>/dev/null || true
+    sleep 1
+  fi
+
+  log "🚀 启动 $name production @ port $port"
+  cd "$path"
+  PORT=$port NODE_ENV=production nohup node .next/standalone/server.js > "$log_file" 2>&1 &
+  local pid=$!
+  echo "$pid" > "$pid_file"
+  log "   PID: $pid, 日志: $log_file"
+
+  if wait_for_port "$port" 15; then
+    log "✅ $name production 已就绪 → http://localhost:$port"
+  else
+    log "⚠️  $name 启动中，请稍后检查: tail -f $log_file"
+  fi
+}
+
+do_stop() {
+  local name="$1"
+  local pid_file
+  pid_file=$(get_pid_file "$name")
+
+  local running_pid
+  if running_pid=$(is_running "$name"); then
+    log "🛑 停止 $name (PID: $running_pid)..."
+    kill -TERM "$running_pid" 2>/dev/null || true
+    sleep 2
+    if kill -0 "$running_pid" 2>/dev/null; then
+      log "   强制停止..."
+      kill -KILL "$running_pid" 2>/dev/null || true
+    fi
+    rm -f "$pid_file"
+    log "✅ $name 已停止"
+  else
+    log "ℹ️  $name 未在运行"
+    rm -f "$pid_file"
+  fi
+}
+
+do_restart() {
+  local name="$1"
+  local port="${2:-}"
+  do_stop "$name"
+  sleep 1
+  do_start "$name" "$port"
+}
+
+do_rebuild() {
+  local name="$1"
+  local custom_port="${2:-}"
+  local idx
+  idx=$(find_project_index "$name") || { log "❌ 未知项目: $name"; return 1; }
+  local path="${PROJECT_PATHS[$idx]}"
+  local default_port="${PROJECT_PORTS[$idx]}"
+  local port="${custom_port:-$default_port}"
+
+  log "🔄 完整重建 $name ..."
+
+  do_stop "$name"
+
+  cd "$path"
+  log "   清理 .next ..."
+  rm -rf .next
+  log "   构建 ..."
+  npm run build 2>&1
+  log "   复制到 standalone ..."
+  cp -r .next/static .next/standalone/.next/ 2>/dev/null || true
+  cp -r public .next/standalone/ 2>/dev/null || true
+  cp -r prisma .next/standalone/ 2>/dev/null || true
+  cp -r node_modules/@prisma .next/standalone/node_modules/@prisma 2>/dev/null || true
+  # 确保 standalone/.env 与根目录同步
+  if [ -f .env ]; then
+    cp .env .next/standalone/.env
+  fi
+
+  do_start "$name" "$port"
+  log "✅ $name 重建完成 → http://localhost:$port"
+}
+
+do_status() {
+  echo ""
+  echo "📊 项目状态"
+  echo "=========================================="
+  local i
+  for i in "${!PROJECT_NAMES[@]}"; do
+    local name="${PROJECT_NAMES[$i]}"
+    local port="${PROJECT_PORTS[$i]}"
+    local running_pid
+    if running_pid=$(is_running "$name"); then
+      local http_code
+      http_code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$port/" 2>/dev/null || echo "???")
+      printf "  ✅ %-15s port %-5s PID %-6s HTTP %s\n" "$name" "$port" "$running_pid" "$http_code"
+    else
+      printf "  ❌ %-15s port %-5s (未运行)\n" "$name" "$port"
+    fi
+  done
+  echo "=========================================="
+  echo ""
+}
+
+do_list() {
+  echo ""
+  echo "📋 管理的项目"
+  echo "=========================================="
+  local i
+  for i in "${!PROJECT_NAMES[@]}"; do
+    printf "  %-15s port %-5s → %s\n" "${PROJECT_NAMES[$i]}" "${PROJECT_PORTS[$i]}" "${PROJECT_PATHS[$i]}"
+  done
+  echo "=========================================="
+  echo ""
+}
+
+# ============================================================
+# 批量操作
+# ============================================================
+do_all() {
+  local cmd="$1"
+  local port="${2:-}"
+  local i
+  for i in "${!PROJECT_NAMES[@]}"; do
+    local name="${PROJECT_NAMES[$i]}"
+    case "$cmd" in
+      dev)     do_dev "$name" ;;
+      build)   do_build "$name" ;;
+      start)   do_start "$name" ;;
+      stop)    do_stop "$name" ;;
+      restart) do_restart "$name" ;;
+      rebuild) do_rebuild "$name" ;;
+    esac
+  done
+}
+
+# ============================================================
+# 主入口
+# ============================================================
+
+usage() {
+  echo ""
+  echo "用法: $0 <command> [project] [port]"
+  echo ""
+  echo "命令:"
+  echo "  dev [project] [port]      启动 dev 服务器"
+  echo "  build [project]           构建项目"
+  echo "  start [project] [port]    启动 production 服务器"
+  echo "  stop [project]            停止项目"
+  echo "  restart [project] [port]  重启项目"
+  echo "  rebuild [project] [port]  完整重建"
+  echo "  status                    查看状态"
+  echo "  list                      列出项目"
+  echo ""
+  echo "项目: dashboard (默认), hermes-web, script-manager, pdb-tracker,"
+  echo "      pptx-template-editor, virtual-lab, all"
+  echo ""
+  exit 1
+}
+
+main() {
+  local cmd="${1:-help}"
+  shift || true
+
+  case "$cmd" in
+    help|--help|-h) usage ;;
+    list)           do_list ;;
+    status)         do_status ;;
+    dev|build|start|stop|restart|rebuild)
+      local project="${1:-dashboard}"
+      shift || true
+      local port="${1:-}"
+
+      if [ "$project" = "all" ]; then
+        do_all "$cmd" "$port"
+      else
+        case "$cmd" in
+          dev)     do_dev "$project" "$port" ;;
+          build)   do_build "$project" ;;
+          start)   do_start "$project" "$port" ;;
+          stop)    do_stop "$project" ;;
+          restart) do_restart "$project" "$port" ;;
+          rebuild) do_rebuild "$project" "$port" ;;
+        esac
+      fi
+      ;;
+    *)
+      log "❌ 未知命令: $cmd"
+      usage
+      ;;
+  esac
+}
+
+main "$@"

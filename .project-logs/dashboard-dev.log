@@ -1,0 +1,153 @@
+
+> temp-project@0.1.0 dev
+> next dev -p ${PORT:-3000} -H 0.0.0.0
+
+▲ Next.js 16.2.7 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://0.0.0.0:3000
+- Environments: .env
+✓ Ready in 202ms
+
+ GET / 200 in 370ms (next.js: 131ms, application-code: 239ms)
+⨯ Error: Failed to load external module @prisma/client-2c3a283f134fdcb6: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- /Users/lijing/Projects/web-dashboard/node_modules/@prisma/client/default.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[root-of-the-server]__0u4t78_._.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[turbopack]_runtime.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/app/api/projects/route.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/require.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/load-components.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/build/utils.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-server.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/start-server.js
+    at module evaluation (src/lib/db.ts:1:1)
+    at module evaluation (src/app/api/projects/route.ts:1:1)
+    at Object.<anonymous> (.next/dev/server/app/api/projects/route.js:6:3)
+> 1 | import { PrismaClient } from '@prisma/client'
+    | ^
+  2 |
+  3 | const globalForPrisma = globalThis as unknown as {
+  4 |   prisma: PrismaClient | undefined {
+  page: '/api/projects'
+}
+ GET /api/projects 500 in 265ms (next.js: 150ms, application-code: 115ms)
+ GET / 200 in 169ms (next.js: 124ms, application-code: 45ms)
+ GET /api/network-info 200 in 29ms (next.js: 20ms, application-code: 9ms)
+ GET / 200 in 75ms (next.js: 7ms, application-code: 67ms)
+⨯ Error: Failed to load external module @prisma/client-2c3a283f134fdcb6: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- /Users/lijing/Projects/web-dashboard/node_modules/@prisma/client/default.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[root-of-the-server]__0u4t78_._.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[turbopack]_runtime.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/app/api/projects/route.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/require.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/load-components.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/build/utils.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-server.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/start-server.js
+    at module evaluation (src/lib/db.ts:1:1)
+    at module evaluation (src/app/api/projects/route.ts:1:1)
+    at Object.<anonymous> (.next/dev/server/app/api/projects/route.js:6:3)
+> 1 | import { PrismaClient } from '@prisma/client'
+    | ^
+  2 |
+  3 | const globalForPrisma = globalThis as unknown as {
+  4 |   prisma: PrismaClient | undefined {
+  page: '/api/projects'
+}
+ GET /api/projects 500 in 70ms (next.js: 60ms, application-code: 9ms)
+⨯ Error: Failed to load external module @prisma/client-2c3a283f134fdcb6: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- /Users/lijing/Projects/web-dashboard/node_modules/@prisma/client/default.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[root-of-the-server]__0u4t78_._.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[turbopack]_runtime.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/app/api/projects/route.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/require.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/load-components.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/build/utils.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-server.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/start-server.js
+    at module evaluation (src/lib/db.ts:1:1)
+    at module evaluation (src/app/api/projects/route.ts:1:1)
+    at Object.<anonymous> (.next/dev/server/app/api/projects/route.js:6:3)
+> 1 | import { PrismaClient } from '@prisma/client'
+    | ^
+  2 |
+  3 | const globalForPrisma = globalThis as unknown as {
+  4 |   prisma: PrismaClient | undefined {
+  page: '/api/projects'
+}
+ GET /api/projects 500 in 44ms (next.js: 35ms, application-code: 9ms)
+⨯ Error: Failed to load external module @prisma/client-2c3a283f134fdcb6: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- /Users/lijing/Projects/web-dashboard/node_modules/@prisma/client/default.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[root-of-the-server]__0u4t78_._.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[turbopack]_runtime.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/app/api/projects/route.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/require.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/load-components.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/build/utils.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-server.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/start-server.js
+    at module evaluation (src/lib/db.ts:1:1)
+    at module evaluation (src/app/api/projects/route.ts:1:1)
+    at Object.<anonymous> (.next/dev/server/app/api/projects/route.js:6:3)
+> 1 | import { PrismaClient } from '@prisma/client'
+    | ^
+  2 |
+  3 | const globalForPrisma = globalThis as unknown as {
+  4 |   prisma: PrismaClient | undefined {
+  page: '/api/projects'
+}
+ GET /api/projects 500 in 34ms (next.js: 27ms, application-code: 7ms)
+⨯ Error: Failed to load external module @prisma/client-2c3a283f134fdcb6: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- /Users/lijing/Projects/web-dashboard/node_modules/@prisma/client/default.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[root-of-the-server]__0u4t78_._.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[turbopack]_runtime.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/app/api/projects/route.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/require.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/load-components.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/build/utils.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-server.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/start-server.js
+    at module evaluation (src/lib/db.ts:1:1)
+    at module evaluation (src/app/api/projects/route.ts:1:1)
+    at Object.<anonymous> (.next/dev/server/app/api/projects/route.js:6:3)
+> 1 | import { PrismaClient } from '@prisma/client'
+    | ^
+  2 |
+  3 | const globalForPrisma = globalThis as unknown as {
+  4 |   prisma: PrismaClient | undefined {
+  page: '/api/projects'
+}
+ GET /api/projects 500 in 60ms (next.js: 47ms, application-code: 13ms)
+⨯ Error: Failed to load external module @prisma/client-2c3a283f134fdcb6: Error: Cannot find module '.prisma/client/default'
+Require stack:
+- /Users/lijing/Projects/web-dashboard/node_modules/@prisma/client/default.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[root-of-the-server]__0u4t78_._.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/chunks/[turbopack]_runtime.js
+- /Users/lijing/Projects/web-dashboard/.next/dev/server/app/api/projects/route.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/require.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/load-components.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/build/utils.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/router-server.js
+- /Users/lijing/Projects/web-dashboard/node_modules/next/dist/server/lib/start-server.js
+    at module evaluation (src/lib/db.ts:1:1)
+    at module evaluation (src/app/api/projects/route.ts:1:1)
+    at Object.<anonymous> (.next/dev/server/app/api/projects/route.js:6:3)
+> 1 | import { PrismaClient } from '@prisma/client'
+    | ^
+  2 |
+  3 | const globalForPrisma = globalThis as unknown as {
+  4 |   prisma: PrismaClient | undefined {
+  page: '/api/projects'
+}
+ GET /api/projects 500 in 81ms (next.js: 73ms, application-code: 8ms)
+[?25h

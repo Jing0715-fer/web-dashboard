@@ -1,0 +1,21 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/gateway/status/route": "/api/gateway/status",
+  "/api/llm-config/detect-claude-code/route": "/api/llm-config/detect-claude-code",
+  "/api/llm-config/route": "/api/llm-config",
+  "/api/network-info/route": "/api/network-info",
+  "/api/openclaw/dashboard-url/route": "/api/openclaw/dashboard-url",
+  "/api/projects/[id]/analyze-cli/route": "/api/projects/[id]/analyze-cli",
+  "/api/projects/[id]/analyze/route": "/api/projects/[id]/analyze",
+  "/api/projects/[id]/environments/[envId]/logs/route": "/api/projects/[id]/environments/[envId]/logs",
+  "/api/projects/[id]/environments/[envId]/restart/route": "/api/projects/[id]/environments/[envId]/restart",
+  "/api/projects/[id]/environments/[envId]/route": "/api/projects/[id]/environments/[envId]",
+  "/api/projects/[id]/environments/[envId]/start/route": "/api/projects/[id]/environments/[envId]/start",
+  "/api/projects/[id]/environments/[envId]/stop/route": "/api/projects/[id]/environments/[envId]/stop",
+  "/api/projects/[id]/environments/route": "/api/projects/[id]/environments",
+  "/api/projects/[id]/route": "/api/projects/[id]",
+  "/api/projects/route": "/api/projects",
+  "/api/route": "/api",
+  "/page": "/"
+}

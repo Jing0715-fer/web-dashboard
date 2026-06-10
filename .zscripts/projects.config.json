@@ -1,0 +1,140 @@
+{
+  "version": "1.0",
+  "description": "Project Manager Configuration — Single source of truth for both the dashboard and project-manager.sh",
+  "logDir": "/Users/lijing/Projects/.project-logs",
+  "pidDir": "/Users/lijing/Projects/.project-pids",
+  "portConvention": {
+    "description": "prod = dev + 1000 (except dashboard/pdb-tracker)",
+    "dashboard": { "dev": 3000, "prod": 4000 },
+    "pdb-tracker": { "dev": 3003, "prod": 4003 },
+    "default": "dev + 1000"
+  },
+  "projects": [
+    {
+      "name": "Dashboard",
+      "path": "/Users/lijing/Projects/web-dashboard",
+      "description": "Main project management dashboard — Next.js web app for monitoring and controlling all sub-projects",
+      "icon": "monitor",
+      "tags": ["Frontend", "Fullstack"],
+      "environments": [
+        {
+          "name": "development",
+          "cmd": "npm run dev",
+          "port": 3000,
+          "envVars": {}
+        },
+        {
+          "name": "production",
+          "cmd": "node .next/standalone/server.js",
+          "port": 4000,
+          "envVars": { "NODE_ENV": "production" }
+        }
+      ]
+    },
+    {
+      "name": "Hermes Web",
+      "path": "/Users/lijing/Projects/hermes-web",
+      "description": "Hermes messaging platform web interface — Real-time communication web application",
+      "icon": "globe",
+      "tags": ["Frontend", "API"],
+      "environments": [
+        {
+          "name": "development",
+          "cmd": "npm run dev",
+          "port": 3001,
+          "envVars": {}
+        },
+        {
+          "name": "production",
+          "cmd": "node .next/standalone/server.js",
+          "port": 4001,
+          "envVars": { "NODE_ENV": "production" }
+        }
+      ]
+    },
+    {
+      "name": "Script Manager",
+      "path": "/Users/lijing/Projects/script-manager",
+      "description": "Script management and automation tool — Organize, schedule, and monitor shell scripts",
+      "icon": "terminal",
+      "tags": ["Backend", "DevOps"],
+      "environments": [
+        {
+          "name": "development",
+          "cmd": "npm run dev",
+          "port": 3002,
+          "envVars": {}
+        },
+        {
+          "name": "production",
+          "cmd": "node .next/standalone/server.js",
+          "port": 4002,
+          "envVars": { "NODE_ENV": "production" }
+        }
+      ]
+    },
+    {
+      "name": "PDB Tracker",
+      "path": "/Users/lijing/Projects/pdb-tracker-web-v3",
+      "description": "Protein Data Bank tracker v3 — Structural biology data tracking and visualization platform",
+      "icon": "database",
+      "tags": ["Fullstack", "Database"],
+      "environments": [
+        {
+          "name": "development",
+          "cmd": "npm run dev",
+          "port": 3003,
+          "envVars": {}
+        },
+        {
+          "name": "production",
+          "cmd": "node .next/standalone/server.js",
+          "port": 4003,
+          "envVars": { "NODE_ENV": "production" }
+        }
+      ]
+    },
+    {
+      "name": "PPTX Template Editor",
+      "path": "/Users/lijing/Projects/pptx-template-editor",
+      "description": "PowerPoint template editor — Design and customize presentation templates with drag-and-drop",
+      "icon": "folder",
+      "tags": ["Frontend"],
+      "environments": [
+        {
+          "name": "development",
+          "cmd": "npm run dev",
+          "port": 3005,
+          "envVars": {}
+        },
+        {
+          "name": "production",
+          "cmd": "node .next/standalone/server.js",
+          "port": 4005,
+          "envVars": { "NODE_ENV": "production" }
+        }
+      ]
+    },
+    {
+      "name": "Virtual Lab",
+      "path": "/Users/lijing/Projects/Virtual-lab",
+      "description": "Virtual laboratory environment — Simulate experiments and analyze results in a web-based lab",
+      "icon": "cpu",
+      "tags": ["Fullstack", "ML/AI"],
+      "environments": [
+        {
+          "name": "development",
+          "cmd": "npm run dev",
+          "port": 3006,
+          "envVars": {}
+        },
+        {
+          "name": "production",
+          "cmd": "node .next/standalone/server.js",
+          "port": 4006,
+          "envVars": { "NODE_ENV": "production" }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "version": 3,
+  "pages404": true,
+  "appType": "app",
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/api/projects/[id]",
+      "regex": "^/api/projects/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/projects/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/projects/[id]/analyze",
+      "regex": "^/api/projects/([^/]+?)/analyze(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/projects/(?<nxtPid>[^/]+?)/analyze(?:/)?$"
+    },
+    {
+      "page": "/api/projects/[id]/analyze-cli",
+      "regex": "^/api/projects/([^/]+?)/analyze\\-cli(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/projects/(?<nxtPid>[^/]+?)/analyze\\-cli(?:/)?$"
+    },
+    {
+      "page": "/api/projects/[id]/environments",
+      "regex": "^/api/projects/([^/]+?)/environments(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/projects/(?<nxtPid>[^/]+?)/environments(?:/)?$"
+    },
+    {
+      "page": "/api/projects/[id]/environments/[envId]",
+      "regex": "^/api/projects/([^/]+?)/environments/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid",
+        "nxtPenvId": "nxtPenvId"
+      },
+      "namedRegex": "^/api/projects/(?<nxtPid>[^/]+?)/environments/(?<nxtPenvId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/projects/[id]/environments/[envId]/logs",
+      "regex": "^/api/projects/([^/]+?)/environments/([^/]+?)/logs(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid",
+        "nxtPenvId": "nxtPenvId"
+      },
+      "namedRegex": "^/api/projects/(?<nxtPid>[^/]+?)/environments/(?<nxtPenvId>[^/]+?)/logs(?:/)?$"
+    },
+    {
+      "page": "/api/projects/[id]/environments/[envId]/restart",
+      "regex": "^/api/projects/([^/]+?)/environments/([^/]+?)/restart(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid",
+        "nxtPenvId": "nxtPenvId"
+      },
+      "namedRegex": "^/api/projects/(?<nxtPid>[^/]+?)/environments/(?<nxtPenvId>[^/]+?)/restart(?:/)?$"
+    },
+    {
+      "page": "/api/projects/[id]/environments/[envId]/start",
+      "regex": "^/api/projects/([^/]+?)/environments/([^/]+?)/start(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid",
+        "nxtPenvId": "nxtPenvId"
+      },
+      "namedRegex": "^/api/projects/(?<nxtPid>[^/]+?)/environments/(?<nxtPenvId>[^/]+?)/start(?:/)?$"
+    },
+    {
+      "page": "/api/projects/[id]/environments/[envId]/stop",
+      "regex": "^/api/projects/([^/]+?)/environments/([^/]+?)/stop(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid",
+        "nxtPenvId": "nxtPenvId"
+      },
+      "namedRegex": "^/api/projects/(?<nxtPid>[^/]+?)/environments/(?<nxtPenvId>[^/]+?)/stop(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_global-error",
+      "regex": "^/_global\\-error(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_global\\-error(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/api",
+      "regex": "^/api(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api(?:/)?$"
+    },
+    {
+      "page": "/api/gateway/status",
+      "regex": "^/api/gateway/status(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/gateway/status(?:/)?$"
+    },
+    {
+      "page": "/api/llm-config",
+      "regex": "^/api/llm\\-config(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/llm\\-config(?:/)?$"
+    },
+    {
+      "page": "/api/llm-config/detect-claude-code",
+      "regex": "^/api/llm\\-config/detect\\-claude\\-code(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/llm\\-config/detect\\-claude\\-code(?:/)?$"
+    },
+    {
+      "page": "/api/network-info",
+      "regex": "^/api/network\\-info(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/network\\-info(?:/)?$"
+    },
+    {
+      "page": "/api/openclaw/dashboard-url",
+      "regex": "^/api/openclaw/dashboard\\-url(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/openclaw/dashboard\\-url(?:/)?$"
+    },
+    {
+      "page": "/api/projects",
+      "regex": "^/api/projects(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/projects(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}
