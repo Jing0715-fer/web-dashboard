@@ -1,12 +1,16 @@
 {
-  "name": "temp-project",
-  "version": "0.1.0",
+  "name": "nextjs_tailwind_shadcn_ts",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p ${PORT:-3000} -H 0.0.0.0",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && cp -r prisma .next/standalone/ && cp .env .next/standalone/",
     "start": "NODE_ENV=production PORT=4000 node .next/standalone/server.js",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:reset": "prisma migrate reset"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
