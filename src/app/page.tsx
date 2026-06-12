@@ -522,8 +522,7 @@ function useBridgeStatus() {
   // 'projects-updated' on every fetchProjects() call (we add that separately).
   const refresh = React.useCallback(() => {
     try {
-      // @ts-expect-error - injected by DashboardPage
-      const projects: Project[] = window.__dashboardProjects || []
+      const projects = (window.__dashboardProjects ?? []) as Project[]
       const proj = projects.find((p) => p.name === HERMES_BRIDGE_NAME) || null
       setBridgeProject(proj)
       const env = proj?.environments?.[0] || null
@@ -1598,7 +1597,11 @@ function DetailSheet({
 
   if (!project) return null
 
-  const status = getProjectStatus(project)
+  // Defensive default: if environments is missing for any reason, render an
+  // empty list rather than crashing. (Bug guard for any caller that forgets
+  // to unwrap the { project } envelope from /api/projects/:id.)
+  const envs = project.environments ?? []
+  const status = getProjectStatus({ ...project, environments: envs })
   const tags = parseTags(project.tags)
   const IconComp = ICON_MAP[project.icon] || Folder
 
@@ -2200,7 +2203,6 @@ export default function DashboardPage() {
         setLastRefreshed(new Date().toISOString())
         // Publish projects for cross-component consumers (e.g. HermesBridgeToggle)
         try {
-          // @ts-expect-error - window extension for sibling components
           window.__dashboardProjects = parsed
           window.dispatchEvent(new CustomEvent('projects-updated'))
         } catch {
@@ -2448,7 +2450,8 @@ export default function DashboardPage() {
     fetch(`/api/projects/${p.id}`)
       .then((r) => r.json())
       .then((fresh) => {
-        setSelectedProject(fresh)
+        // API returns { project: { ... } } envelope — unwrap
+        setSelectedProject(fresh?.project ?? fresh)
         setDetailOpen(true)
       })
       .catch(() => {
@@ -2529,7 +2532,7 @@ export default function DashboardPage() {
         // Refresh detail if open
         if (selectedProject?.id === projectId) {
           const fresh = await (await fetch(`/api/projects/${projectId}`)).json()
-          setSelectedProject(fresh)
+          setSelectedProject(fresh?.project ?? fresh)
         }
       }
     } catch {
@@ -2574,7 +2577,7 @@ export default function DashboardPage() {
       fetchProjects()
       if (selectedProject?.id === projectId) {
         const fresh = await (await fetch(`/api/projects/${projectId}`)).json()
-        setSelectedProject(fresh)
+        setSelectedProject(fresh?.project ?? fresh)
       }
     } catch {
       toast({ title: 'Failed to rebuild project', variant: 'destructive' })
