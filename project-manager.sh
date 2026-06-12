@@ -273,7 +273,8 @@ do_dev() {
 
   log "🚀 Starting $name dev @ port $port"
   cd "$path"
-  PORT=$port nohup npm run dev > "$log_file" 2>&1 &
+  unset TURBOPACK
+  PORT=$port TURBOPACK= nohup npm run dev > "$log_file" 2>&1 &
   local pid=$!
   echo "$pid" > "$pid_file"
   log_info "PID: $pid, Log: $log_file"
@@ -299,8 +300,10 @@ do_build() {
 
   log "🔨 Building $name ..."
   cd "$path"
-  
-  if npm run build 2>&1; then
+
+  # 确保不传递 TURBOPACK=1 到子进程（避免与 --webpack 冲突）
+  unset TURBOPACK
+  if TURBOPACK= npm run build 2>&1; then
     log_success "$name build complete"
   else
     log_error "$name build failed"
@@ -356,7 +359,7 @@ do_start() {
   cp -r .next/static .next/standalone/.next/ 2>/dev/null || true
   cp -r public .next/standalone/ 2>/dev/null || true
   
-  PORT=$port NODE_ENV=production nohup node .next/standalone/server.js > "$log_file" 2>&1 &
+  PORT=$port NODE_ENV=production nohup env -u TURBOPACK node .next/standalone/server.js > "$log_file" 2>&1 &
   local pid=$!
   echo "$pid" > "$pid_file"
   log_info "PID: $pid, Log: $log_file"
@@ -419,11 +422,14 @@ do_rebuild() {
   do_stop "$name"
 
   cd "$path"
+  # 清理 .next
   log_info "Cleaning .next ..."
   rm -rf .next
   log_info "Building ..."
-  
-  if ! npm run build 2>&1; then
+
+  # 确保不传递 TURBOPACK=1 到子进程（避免与 --webpack 冲突）
+  unset TURBOPACK
+  if ! TURBOPACK= npm run build 2>&1; then
     log_error "$name build failed"
     return 1
   fi

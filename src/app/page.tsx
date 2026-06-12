@@ -2264,7 +2264,7 @@ export default function DashboardPage() {
 
   // Computed values
   const filteredProjects = React.useMemo(() => {
-    let result = [...projects]
+    let result = [...projects].filter((p) => p.name !== HERMES_BRIDGE_NAME)
 
     // Search
     if (searchQuery.trim()) {
@@ -2469,6 +2469,22 @@ export default function DashboardPage() {
               await fetch(`/api/projects/${bridgeProject.id}/environments/${bridgeEnv.id}/start`, { method: 'POST' })
               toast({ title: 'Hermes Bridge auto-started', variant: 'success' })
             } catch { /* best-effort */ }
+          }
+        }
+
+        // Auto-stop Hermes Bridge when all Hermes Web environments are stopped
+        if (action === 'stop' && project?.name === 'Hermes Web') {
+          const hermesWeb = projects.find((p) => p.name === 'Hermes Web')
+          const stillRunning = hermesWeb?.environments?.some((e) => e.id !== envId && e.status === 'running')
+          if (!stillRunning) {
+            const bridgeProject = projects.find((p) => p.name === 'Hermes Bridge')
+            const bridgeEnv = bridgeProject?.environments?.[0]
+            if (bridgeProject && bridgeEnv && bridgeEnv.status === 'running') {
+              try {
+                await fetch(`/api/projects/${bridgeProject.id}/environments/${bridgeEnv.id}/stop`, { method: 'POST' })
+                toast({ title: 'Hermes Bridge auto-stopped', variant: 'success' })
+              } catch { /* best-effort */ }
+            }
           }
         }
 
