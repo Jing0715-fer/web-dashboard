@@ -419,72 +419,23 @@ function DashboardClockWidget() {
 // Small switch embedded in the Hermes Web project card. Controls the
 // "Hermes Bridge" project's bridge environment (port 3210). Status is
 // driven by the dashboard's existing 5s project refresh — the toggle is
-// purely a start/stop trigger.
-//
-// Kept intentionally minimal: a PlugZap icon + Switch, no backdrop blur,
-// no rounded-full pill, no "Bridge on" text. Tooltip carries the status.
+// ======================== HERMES BRIDGE TOGGLE ========================
+// Minimal badge for the Hermes Web card's dev env row.
+// Green = bridge running, gray = stopped. No switch, no pulse animation.
+// Placed inline with the dev tag to avoid adding height.
 
 const HERMES_BRIDGE_NAME = 'Hermes Bridge'
 
 function HermesBridgeToggle() {
-  const [busy, setBusy] = React.useState(false)
-  const [localError, setLocalError] = React.useState<string | null>(null)
-
-  const { bridgeProject, bridgeEnv, bridgeRunning } = useBridgeStatus()
-
-  const handleToggle = React.useCallback(async (next: boolean) => {
-    if (!bridgeProject || !bridgeEnv || busy) return
-    setBusy(true)
-    setLocalError(null)
-    try {
-      const res = await fetch(`/api/projects/${bridgeProject.id}/environments/${bridgeEnv.id}/${next ? 'start' : 'stop'}`, {
-        method: 'POST',
-      })
-      if (!res.ok) {
-        const txt = await res.text()
-        setLocalError(txt.slice(0, 120))
-      }
-    } catch (e: any) {
-      setLocalError(e?.message || 'network error')
-    } finally {
-      setBusy(false)
-    }
-  }, [bridgeProject, bridgeEnv, busy])
-
-  if (!bridgeProject) {
-    // Bridge project not configured in dashboard — render nothing
-    return null
-  }
+  const { bridgeRunning } = useBridgeStatus()
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className="inline-flex items-center gap-1 cursor-pointer"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {busy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-            ) : (
-              <PlugZap className={`h-3.5 w-3.5 ${bridgeRunning ? 'text-emerald-500' : 'text-muted-foreground'}`} />
-            )}
-            <Switch
-              checked={bridgeRunning}
-              onCheckedChange={handleToggle}
-              disabled={busy}
-              onClick={(e) => e.stopPropagation()}
-              className="scale-75 data-[state=checked]:bg-emerald-500"
-              aria-label="Hermes bridge"
-            />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">
-          Bridge :3210 · {bridgeRunning ? 'running' : 'stopped'}
-          {localError ? ` · error: ${localError}` : ''}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <span
+      className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded-md font-semibold tracking-wide ${bridgeRunning ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 ring-1 ring-emerald-200/60 dark:ring-emerald-700/50' : 'bg-gray-100 text-gray-500 dark:bg-zinc-800/60 dark:text-zinc-500 ring-1 ring-gray-200/50 dark:ring-zinc-700/40'}`}
+      title={`Hermes Bridge :3210 — ${bridgeRunning ? 'running' : 'stopped'}`}
+    >
+      Bridge
+    </span>
   )
 }
 
@@ -800,6 +751,10 @@ function SortableProjectCard({
                 <div className="flex items-center gap-1.5 min-w-0 shrink">
                   <AnimatedStatusDot status={env.status} />
                   {env.name === 'development' ? <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-md bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300 font-semibold ring-1 ring-cyan-300/60 dark:ring-cyan-700/50">dev</span> : env.name === 'production' ? <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 font-semibold ring-1 ring-amber-300/60 dark:ring-amber-700/50">prod</span> : <span className="text-muted-foreground dark:text-gray-300 truncate max-w-[60px] text-[10px]">{envLabel(env.name)}</span>}
+                  {/* Hermes Bridge badge (only on Hermes Web dev env, inline with dev tag) */}
+                  {project.name === 'Hermes Web' && env.name === 'development' && (
+                    <HermesBridgeToggle />
+                  )}
                   {env.name === 'development' && env.status === 'running' && <span className="shrink-0 text-[8px] px-1 py-0 rounded bg-emerald-100/60 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium tracking-wide" title="Hot Module Replacement — auto-reloads on file changes">HMR</span>}
                   {env.name === 'production' && <span className="shrink-0 text-[8px] px-1 py-0 rounded bg-amber-100/60 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 font-medium tracking-wide" title="Production build — requires rebuild to apply changes">Build</span>}
                 </div>
@@ -824,12 +779,6 @@ function SortableProjectCard({
                     <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="hidden sm:inline-flex items-center justify-center rounded-md h-5 w-5 hover:bg-teal-50 dark:hover:bg-teal-900/20 cursor-pointer text-teal-500 dark:text-teal-400 transition-all active:scale-90 shrink-0" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'rebuild') }} title={`Rebuild ${envLabel(env.name)}`}><Hammer className="h-2.5 w-2.5" /></TooltipTrigger><TooltipContent>Rebuild {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
                   )}
 
-                  {/* Hermes Bridge toggle (only on Hermes Web dev env) */}
-                  {project.name === 'Hermes Web' && env.name === 'development' && (
-                    <span onClick={(e) => e.stopPropagation()}>
-                      <HermesBridgeToggle />
-                    </span>
-                  )}
                   {/* Start/Stop at rightmost position */}
                   {env.status === 'running' ? (
                     <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-5 w-5 sm:h-5 sm:w-5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 cursor-pointer text-red-500 dark:text-red-400 transition-all active:scale-90 shrink-0 ring-1 ring-red-200 dark:ring-red-800/30" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'stop') }} title={`Stop ${envLabel(env.name)}`}><Square className="h-2.5 w-2.5 fill-current" /></TooltipTrigger><TooltipContent>Stop {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
