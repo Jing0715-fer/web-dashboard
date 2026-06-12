@@ -1559,8 +1559,8 @@ function DetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto p-0 dark:bg-zinc-900/98 dark:border-l dark:border-zinc-800/60">
-        <SheetHeader className="px-4 pt-4 pb-2 border-b">
+      <SheetContent side="right" className="w-full sm:max-w-xl overflow-hidden p-0 flex flex-col dark:bg-zinc-900/98 dark:border-l dark:border-zinc-800/60">
+        <SheetHeader className="px-4 pt-4 pb-2 border-b shrink-0">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
               <IconComp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -1575,8 +1575,8 @@ function DetailSheet({
           </div>
         </SheetHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-          <div className="border-b px-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="border-b px-4 shrink-0">
             <TabsList className="h-9 w-full justify-start bg-transparent p-0 gap-2">
               <TabsTrigger value="overview" className="px-3 pb-1.5 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 dark:data-[state=active]:bg-emerald-900/30 dark:data-[state=active]:text-emerald-300 rounded-full transition-colors">Overview</TabsTrigger>
               <TabsTrigger value="environments" className="px-3 pb-1.5 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 dark:data-[state=active]:bg-emerald-900/30 dark:data-[state=active]:text-emerald-300 rounded-full transition-colors">Environments</TabsTrigger>
@@ -1585,7 +1585,7 @@ function DetailSheet({
             </TabsList>
           </div>
 
-          <TabsContent value="overview" className="p-4 space-y-4 mt-0">
+          <TabsContent value="overview" className="p-4 space-y-4 mt-0 overflow-y-auto flex-1 min-h-0">
             {project.description && (
               <div>
                 <div className="flex items-center gap-2"><div className="h-1 w-3 rounded-full bg-emerald-500" /><h4 className="text-xs font-semibold text-muted-foreground dark:text-zinc-200 mb-1">Description</h4></div>
@@ -1719,7 +1719,7 @@ function DetailSheet({
             )}
           </TabsContent>
 
-          <TabsContent value="environments" className="p-4 space-y-3 mt-0">
+          <TabsContent value="environments" className="p-4 space-y-3 mt-0 overflow-y-auto flex-1 min-h-0">
             {project.environments.map((env) => {
               const envVars = parseEnvVars(env.envVars)
               const isExpanded = expandedEnv === env.id
@@ -1848,7 +1848,7 @@ function DetailSheet({
             )}
           </TabsContent>
 
-          <TabsContent value="activity" className="p-4 mt-0">
+          <TabsContent value="activity" className="p-4 mt-0 overflow-y-auto flex-1 min-h-0">
             {loadingActivity ? (
               <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-emerald-600" /></div>
             ) : (
@@ -1882,7 +1882,7 @@ function DetailSheet({
             )}
           </TabsContent>
 
-          <TabsContent value="logs" className="p-4 mt-0">
+          <TabsContent value="logs" className="p-4 mt-0 overflow-y-auto flex-1 min-h-0">
             {loadingLogs ? (
               <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-emerald-600" /></div>
             ) : (
