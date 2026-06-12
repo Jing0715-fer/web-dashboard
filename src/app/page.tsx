@@ -44,7 +44,30 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { useToast } from '@/hooks/use-toast'
+import { useToast, addToast } from '@/hooks/use-toast'
+
+// ======================== CUSTOM DnD SENSOR ========================
+// A PointerSensor that only activates when the pointerdown target is a
+// [data-dnd-drag-handle] element.  This prevents the sensor from
+// intercepting clicks on the rest of the card.
+const DragHandleSensor = class PointerSensor {
+  static activators = [
+    {
+      eventName: 'onPointerDown' as const,
+      handler: ({ nativeEvent }: { nativeEvent: PointerEvent }, { onActivation }: { onActivation?: (args: { event: PointerEvent }) => void }) => {
+        if (!(nativeEvent as PointerEvent).isPrimary || (nativeEvent as PointerEvent).button !== 0) {
+          return false
+        }
+        const target = (nativeEvent as PointerEvent).target as HTMLElement | null
+        if (!target || !target.closest('[data-dnd-drag-handle]')) {
+          return false
+        }
+        onActivation?.({ event: nativeEvent as PointerEvent })
+        return true
+      },
+    },
+  ]
+}
 
 // ======================== TYPES ========================
 
@@ -565,7 +588,7 @@ function SortableProjectCard({
           className={`group flex items-center gap-3 p-3.5 rounded-lg border bg-card dark:bg-zinc-900/80 shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:shadow-md dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)] hover:bg-accent/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer overflow-hidden border-border/60 dark:border-zinc-700/50 ${statusBorderAccent}`}
           onClick={() => onSelect(project)}
         >
-          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()} title="Drag to reorder">
+          <div {...attributes} {...listeners} data-dnd-drag-handle className="cursor-grab active:cursor-grabbing p-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()} title="Drag to reorder">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
           {batchMode && (
@@ -2672,7 +2695,7 @@ export default function DashboardPage() {
   }, [selectedIds.size, filteredProjects])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(DragHandleSensor, {
       activationConstraint: { distance: 8 },
     }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
