@@ -2673,9 +2673,16 @@ export default function DashboardPage() {
     }
   }, [selectedIds.size, filteredProjects])
 
-  // DnD
+  // DnD — use a delay-based activation so normal clicks on the card body
+  // don't get intercepted by the PointerSensor. Only intentional drags
+  // (mouse down + hold + move) activate DnD.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
