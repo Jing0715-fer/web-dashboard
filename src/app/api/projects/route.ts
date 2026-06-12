@@ -4,13 +4,13 @@ import { batchCheckPorts } from '@/lib/process-manager';
 import { SELF_PROJECT_PATHS } from '@/lib/self-guard';
 
 // GET /api/projects - List all projects with environments and status
-// Excludes the dashboard's own project from the list.
+// Includes the dashboard's own project so it appears as a card.
+// Order is by user-defined `order` field (drag-and-drop) then by most recent update.
 export async function GET() {
   try {
     const projects = await db.project.findMany({
-      where: { path: { notIn: [...SELF_PROJECT_PATHS] } },
       include: { environments: true },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ order: 'asc' }, { updatedAt: 'desc' }],
     });
 
     // Batch check all ports at once for efficiency

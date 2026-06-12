@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     if (isNextJs) {
       // Build Next.js project
       console.log(`[RebuildProject] Building Next.js project ${project.name}...`);
-      const { stdout: buildOut, stderr: buildErr } = await execAsync('bun run build', {
+      const { stdout: buildOut, stderr: buildErr } = await execAsync('npm run build', {
         cwd: projectDir,
         env: buildEnv({ NODE_ENV: 'production' }),
         timeout: 300000,
@@ -113,22 +113,25 @@ export async function POST(req: NextRequest) {
           .map(([k, v]) => `${k}=${shellQuote(v)}`)
           .join(' ');
         const portStr = `PORT=${prodEnv.port}`;
+        const logFile = `/tmp/${project.name.toLowerCase().replace(/\s+/g, '-')}.log`;
         execAsync(
-          `cd ${shellQuote(standaloneDir)} && ${envStr} ${portStr} NODE_ENV=production node server.js >> /tmp/${shellQuote(project.name.toLowerCase().replace(/\s+/g, '-'))}.log 2>&1 &`,
+          `sh -c 'cd ${shellQuote(standaloneDir)} && ${envStr} ${portStr} NODE_ENV=production node server.js >> ${shellQuote(logFile)} 2>&1 &'`,
           { env: buildEnv() }
         );
       } else {
-        // Start using the cmd (e.g., "bun run start")
+        // Start using the cmd (e.g., "npm run start")
+        const logFile = `/tmp/${project.name.toLowerCase().replace(/\s+/g, '-')}.log`;
         execAsync(
-          `cd ${shellQuote(projectDir)} && ${cmd} >> /tmp/${shellQuote(project.name.toLowerCase().replace(/\s+/g, '-'))}.log 2>&1 &`,
+          `sh -c 'cd ${shellQuote(projectDir)} && ${cmd} >> ${shellQuote(logFile)} 2>&1 &'`,
           { env: buildEnv() }
         );
       }
     } else {
       // Non-Next.js: just restart using the cmd
       console.log(`[RebuildProject] Restarting ${project.name}...`);
+      const logFile = `/tmp/${project.name.toLowerCase().replace(/\s+/g, '-')}.log`;
       execAsync(
-        `cd ${shellQuote(projectDir)} && ${cmd} >> /tmp/${shellQuote(project.name.toLowerCase().replace(/\s+/g, '-'))}.log 2>&1 &`,
+        `sh -c 'cd ${shellQuote(projectDir)} && ${cmd} >> ${shellQuote(logFile)} 2>&1 &'`,
         { env: buildEnv() }
       );
     }

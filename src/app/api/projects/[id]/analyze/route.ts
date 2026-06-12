@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { readProjectDir, checkPortStatus } from '@/lib/process-manager';
-import ZAI from 'z-ai-web-dev-sdk';
+
+// z-ai-web-dev-sdk is optional — only used when provider is 'zai'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+let ZAI: unknown;
+try {
+  ZAI = require('z-ai-web-dev-sdk');
+} catch {
+  // package not installed — zai provider will be unavailable
+}
 
 const SYSTEM_PROMPT = 'You are a DevOps expert that analyzes project structures and generates startup configurations. Always respond with valid JSON only. Ensure all port numbers are different between environments and all IP addresses are valid.';
 

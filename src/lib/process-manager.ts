@@ -323,6 +323,25 @@ export async function startProcess(
       HOST: '0.0.0.0',
     };
 
+    // CRITICAL: prepend the target project's node_modules/.bin to PATH so
+    // that `npm run dev` / `next dev` can find the project's own binaries.
+    // Also ensure global npm/yarn/bun paths are included.
+    const projectNodeBin = join(cwd, 'node_modules', '.bin');
+    const globalBinPaths = [
+      '/Users/lijing/.local/bin',
+      '/Users/lijing/.bun/bin',
+      '/Users/lijing/.nvm/versions/node/v22.22.0/bin',
+      '/usr/local/bin',
+      '/usr/bin',
+      '/bin',
+    ].filter(existsSync);
+    const pathParts = [
+      ...(existsSync(projectNodeBin) ? [projectNodeBin] : []),
+      ...globalBinPaths,
+      process.env.PATH || '',
+    ];
+    env.PATH = pathParts.join(':');
+
     const { useShell, command, args } = parseCommand(cmd);
 
     appendLog(key, `[${new Date().toISOString()}] Starting: ${cmd} (port: ${port}, cwd: ${cwd})`);

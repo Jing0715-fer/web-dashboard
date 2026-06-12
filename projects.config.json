@@ -135,6 +135,21 @@
           "envVars": { "NODE_ENV": "production" }
         }
       ]
+    },
+    {
+      "name": "Hermes Bridge",
+      "path": "/Users/lijing/Projects/hermes-ws-bridge-link",
+      "description": "WebSocket bridge between Hermes Web (3010) and Hermes dashboard JSON-RPC (9120) — proxies chat to the agent gateway on port 3210",
+      "icon": "plug-zap",
+      "tags": ["Backend", "API"],
+      "environments": [
+        {
+          "name": "bridge",
+          "cmd": "node scripts/hermes-ws-bridge.js",
+          "port": 3210,
+          "envVars": {}
+        }
+      ]
     }
   ]
 }

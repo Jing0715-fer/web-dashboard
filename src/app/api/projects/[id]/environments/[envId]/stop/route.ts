@@ -18,6 +18,13 @@ export async function POST(
     }
 
     const result = await stopProcess(id, env.name, env.port);
+
+    // Update DB status
+    await db.environment.update({
+      where: { id: envId },
+      data: { status: 'stopped', pid: null },
+    });
+
     return NextResponse.json({ ok: result.success, error: result.error });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

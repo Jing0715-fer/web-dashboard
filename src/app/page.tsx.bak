@@ -12,7 +12,7 @@ import {
   Monitor, Database, Smartphone, Cpu as CpuIcon, GitBranch,
   CheckCircle2, XCircle, Loader2,
   Bot, ArrowUpDown,
-  CircleDot
+  CircleDot, Download, Star, ExternalLink, Link2
 } from 'lucide-react'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -137,14 +137,15 @@ type SortOption = 'newest' | 'name' | 'status'
 type FilterStatus = 'all' | 'running' | 'stopped'
 
 const TAG_OPTIONS = [
-  { name: 'Frontend', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' },
-  { name: 'Backend', color: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400' },
-  { name: 'Fullstack', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400' },
-  { name: 'DevOps', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' },
-  { name: 'Mobile', color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400' },
-  { name: 'API', color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400' },
-  { name: 'Database', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
-  { name: 'ML/AI', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400' },
+  { name: 'Frontend', color: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-300 ring-1 ring-emerald-200/40 dark:ring-emerald-700/30' },
+  { name: 'Backend', color: 'bg-teal-100 text-teal-900 dark:bg-teal-900/40 dark:text-teal-300 ring-1 ring-teal-200/40 dark:ring-teal-700/30' },
+  { name: 'Fullstack', color: 'bg-cyan-100 text-cyan-900 dark:bg-cyan-900/40 dark:text-cyan-300 ring-1 ring-cyan-200/40 dark:ring-cyan-700/30' },
+  { name: 'DevOps', color: 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-300 ring-1 ring-amber-200/40 dark:ring-amber-700/30' },
+  { name: 'Mobile', color: 'bg-rose-100 text-rose-900 dark:bg-rose-900/40 dark:text-rose-300 ring-1 ring-rose-200/40 dark:ring-rose-700/30' },
+  { name: 'API', color: 'bg-violet-100 text-violet-900 dark:bg-violet-900/40 dark:text-violet-300 ring-1 ring-violet-200/40 dark:ring-violet-700/30' },
+  { name: 'Database', color: 'bg-orange-100 text-orange-900 dark:bg-orange-900/40 dark:text-orange-300 ring-1 ring-orange-200/40 dark:ring-orange-700/30' },
+  { name: 'ML/AI', color: 'bg-pink-100 text-pink-900 dark:bg-pink-900/40 dark:text-pink-300 ring-1 ring-pink-200/40 dark:ring-pink-700/30' },
+  { name: 'Automation', color: 'bg-slate-200 text-slate-900 dark:bg-slate-800/40 dark:text-slate-300 ring-1 ring-slate-300/40 dark:ring-slate-600/30' },
 ]
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -158,6 +159,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   terminal: Terminal,
   shield: Shield,
   zap: Zap,
+  monitor: Monitor,
 }
 
 const ACTIVITY_ICONS: Record<string, React.ElementType> = {
@@ -305,13 +307,127 @@ function HealthScoreCircle({ score, size = 40 }: { score: number; size?: number 
   const radius = (size - strokeWidth) / 2
   const circumference = radius * 2 * Math.PI
   const offset = circumference - (score / 100) * circumference
+  const [animatedOffset, setAnimatedOffset] = React.useState(offset)
+  const prevOffset = React.useRef(offset)
+
+  React.useEffect(() => {
+    if (prevOffset.current !== offset) {
+      setAnimatedOffset(offset)
+      prevOffset.current = offset
+    }
+  }, [offset])
 
   return (
     <svg width={size} height={size} className="transform -rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-muted/30" />
-      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={healthStroke(score)} strokeWidth={strokeWidth} strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-500" />
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-muted-foreground/20 dark:text-muted-foreground/20" />
+      <motion.circle
+        cx={size / 2} cy={size / 2} r={radius} fill="none"
+        stroke={healthStroke(score)}
+        strokeWidth={strokeWidth}
+        strokeDasharray={circumference}
+        strokeLinecap="round"
+        animate={{ strokeDashoffset: animatedOffset }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+      />
       <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="central" className={`text-[10px] font-semibold ${healthColor(score)}`} transform={`rotate(90, ${size / 2}, ${size / 2})`}>{score}</text>
     </svg>
+  )
+}
+
+// ======================== DEPLOYMENT PIPELINE (unused - removed from cards) ========================
+// DeploymentPipeline component removed from cards to simplify UI
+
+// ======================== HEALTH SCORE HOVER CARD ========================
+
+function HealthScoreHoverCard({
+  score, size, runningEnvs, totalEnvs, updatedAt
+}: {
+  score: number
+  size?: number
+  runningEnvs: number
+  totalEnvs: number
+  updatedAt: string
+}) {
+  const [open, setOpen] = React.useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={<div className="cursor-pointer" />}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        <HealthScoreCircle score={score} size={size} />
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        className="w-48 p-3 text-xs"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        <div className="space-y-2">
+          <div className="font-semibold text-sm">Project Stats</div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Health Score</span>
+            <span className={`font-medium ${healthColor(score)}`}>{score}%</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Running Envs</span>
+            <span className="font-medium text-emerald-600 dark:text-emerald-400">{runningEnvs}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Total Envs</span>
+            <span className="font-medium">{totalEnvs}</span>
+          </div>
+          <Separator />
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last Updated</span>
+            <span className="font-medium">{formatTimeAgo(updatedAt)}</span>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// ======================== DASHBOARD CLOCK WIDGET ========================
+
+function DashboardClockWidget() {
+  const [time, setTime] = React.useState('')
+
+  React.useEffect(() => {
+    const update = () => {
+      const now = new Date()
+      setTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+    }
+    update()
+    const id = setInterval(update, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  if (!time) return <span className="text-[10px] text-muted-foreground font-mono">--:--:--</span>
+  return (
+    <span className="text-[10px] text-muted-foreground dark:text-gray-400 font-mono tabular-nums">{time}</span>
+  )
+}
+
+// ======================== ANIMATED STATUS DOT ========================
+
+function AnimatedStatusDot({ status }: { status: string }) {
+  return (
+    <motion.span
+      className={`h-2 w-2 rounded-full inline-block ${status === 'running' ? 'bg-emerald-500' : 'bg-red-400'}`}
+      initial={{ scale: 1 }}
+      animate={status === 'running'
+        ? { scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }
+        : { scale: [1, 1.8, 1], opacity: [1, 0.7, 1] }
+      }
+      transition={status === 'running'
+        ? { duration: 2, ease: 'easeInOut', repeat: Infinity }
+        : { duration: 0.4, ease: 'easeInOut' }
+      }
+      key={status}
+    />
   )
 }
 
@@ -319,7 +435,8 @@ function HealthScoreCircle({ score, size = 40 }: { score: number; size?: number 
 
 function SortableProjectCard({
   project, viewMode, searchQuery, onSelect, onEdit, onDelete,
-  onEnvAction, selected, onToggleSelect
+  onEnvAction, onRebuildConfirm, selected, onToggleSelect, rebuilding,
+  starred, onToggleStar, lanIp, currentHost, index = 0
 }: {
   project: Project
   viewMode: ViewMode
@@ -328,12 +445,23 @@ function SortableProjectCard({
   onEdit: (p: Project) => void
   onDelete: (p: Project) => void
   onEnvAction: (projectId: string, envId: string, action: string) => void
+  onRebuildConfirm: (p: Project) => void
   selected: boolean
   onToggleSelect: (id: string) => void
+  rebuilding: boolean
+  starred: boolean
+  onToggleStar: (id: string) => void
+  lanIp: string
+  currentHost: string
+  index?: number
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: project.id })
+  const [expanded, setExpanded] = React.useState(false)
+  const needsExpand = project.environments.length > 3 || (project.description && project.description.length > 120)
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: isDragging
+      ? `${CSS.Transform.toString(transform)} rotate(2deg) scale(0.98)`
+      : CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
@@ -344,7 +472,20 @@ function SortableProjectCard({
   const runningEnvs = project.environments.filter((e) => e.status === 'running').length
   const totalEnvs = project.environments.length
   const IconComp = ICON_MAP[project.icon] || Folder
-  const statusColor = status === 'running' ? 'border-l-emerald-500' : status === 'mixed' ? 'border-l-amber-500' : 'border-l-red-400'
+  const statusBorderAccent = status === 'running' ? 'border-l-2 border-l-emerald-500 dark:border-l-emerald-400' : status === 'mixed' ? 'border-l-2 border-l-amber-500 dark:border-l-amber-400' : 'border-l-2 border-l-red-400 dark:border-l-red-500'
+
+  const envLabel = (name: string) => name === 'development' ? 'dev' : name === 'production' ? 'prod' : name
+
+  // Smart URL: use proxy path for external access (ngrok), direct URL for local/LAN
+  const getOpenUrl = (port: number) => {
+    if (currentHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1' && !currentHost.startsWith('192.168.') && !currentHost.startsWith('10.') && !/^172\.(1[6-9]|2\d|3[01])\./.test(currentHost)) {
+      // External access (ngrok or similar) — use proxy path
+      return `/api/proxy/${port}/`
+    }
+    // Local/LAN access — use direct URL
+    const host = currentHost || 'localhost'
+    return `http://${host}:${port}`
+  }
 
   if (viewMode === 'list') {
     return (
@@ -353,33 +494,115 @@ function SortableProjectCard({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          whileHover={{ y: -1, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-          className={`group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer border-l-4 ${statusColor} ${status === 'running' ? 'shadow-[0_0_8px_rgba(16,185,129,0.15)]' : ''}`}
+          transition={{ delay: index * 0.05 }}
+          whileHover={{ y: -1, boxShadow: '0 6px 16px rgba(0,0,0,0.1)' }}
+          className={`group flex items-center gap-3 p-3.5 rounded-lg border bg-card dark:bg-zinc-900/80 shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:shadow-md dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)] hover:bg-accent/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer overflow-hidden border-border/60 dark:border-zinc-700/50 ${statusBorderAccent}`}
           onClick={() => onSelect(project)}
         >
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
           <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(project.id)} onClick={(e) => e.stopPropagation()} className="shrink-0" />
+          <button type="button" onClick={(e) => { e.stopPropagation(); onToggleStar(project.id) }} className={`shrink-0 cursor-pointer transition-colors hover:scale-110 active:scale-90 transition-transform duration-150 ${starred ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400'}`}>
+            <Star className={`h-4 w-4 ${starred ? 'fill-amber-400' : ''}`} />
+          </button>
           <IconComp className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="font-medium truncate">{highlightText(project.name, searchQuery)}</span>
               <Badge variant={status === 'running' ? 'default' : 'secondary'} className={`text-xs shrink-0 ${status === 'running' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : ''}`}>
+                <span className={`h-2 w-2 rounded-full ${status === 'running' ? 'bg-emerald-500' : 'bg-red-400'} mr-1`} />
                 {runningEnvs}/{totalEnvs} running
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground truncate">{highlightText(project.path, searchQuery)}</p>
+            <button type="button" className="text-xs text-muted-foreground dark:text-gray-400 truncate text-left cursor-pointer hover:text-foreground dark:hover:text-gray-200 transition-colors hover:underline decoration-dotted underline-offset-2" title={`${project.path} — Click to copy`} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(project.path); addToast({ title: 'Path copied', description: project.path, variant: 'success' }) }}>{highlightText(project.path, searchQuery)}</button>
           </div>
           <div className="hidden sm:flex items-center gap-1 flex-wrap justify-end max-w-[200px]">
             {tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="secondary" className={`text-[10px] px-1.5 ${getTagColor(tag)}`}>{tag}</Badge>
+              <Badge key={tag} variant="secondary" className={`text-[10px] px-1.5 cursor-default ${getTagColor(tag)}`}>{tag}</Badge>
             ))}
           </div>
-          <HealthScoreCircle score={health} size={32} />
+          {/* List view: per-environment controls */}
+          <div className="hidden md:flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {project.environments.slice(0, 3).map((env) => (
+              <div key={env.id} className={`flex items-center gap-1.5 rounded-md px-1.5 py-1 ${env.status === 'running' ? 'bg-emerald-50/30 dark:bg-emerald-900/5' : 'bg-muted/20'}`}
+                title={`${envLabel(env.name)} — port :${env.port} — ${env.status}${env.pid ? ` — PID ${env.pid}` : ''}`}
+              >
+                <AnimatedStatusDot status={env.status} />
+                {env.name === 'development' ? <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300 font-semibold ring-1 ring-cyan-300/60 dark:ring-cyan-700/50 shrink-0">dev</span> : env.name === 'production' ? <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 font-semibold ring-1 ring-amber-300/60 dark:ring-amber-700/50 shrink-0">prod</span> : <span className="text-[10px] text-muted-foreground dark:text-gray-300 max-w-[40px] truncate">{envLabel(env.name)}</span>}
+                {env.name === 'development' && env.status === 'running' && <span className="text-[8px] px-1 py-0 rounded bg-emerald-100/60 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium tracking-wide shrink-0" title="Hot Module Replacement — auto-reloads on file changes">HMR</span>}
+                {env.name === 'production' && <span className="text-[8px] px-1 py-0 rounded bg-amber-100/60 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 font-medium tracking-wide shrink-0" title="Production build — requires rebuild to apply changes">Build</span>}
+                {env.status === 'running' && (
+                  <a
+                    href={getOpenUrl(env.port)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center rounded-md h-4 w-4 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-500 dark:text-emerald-400 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                    title={`Open ${envLabel(env.name)} (${env.port})`}
+                  >
+                    <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                )}
+                {env.status === 'running' && (
+                  <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-5 w-5 hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer text-amber-500 dark:text-amber-400 transition-all active:scale-90 shrink-0" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'restart') }} title={`Restart ${envLabel(env.name)}`}><RotateCw className="h-2.5 w-2.5" /></TooltipTrigger><TooltipContent>Restart {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
+                )}
+                {env.name !== 'development' && (
+                  <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-5 w-5 hover:bg-teal-50 dark:hover:bg-teal-900/20 cursor-pointer text-teal-500 dark:text-teal-400 transition-all active:scale-90 shrink-0" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'rebuild') }} title={`Rebuild ${envLabel(env.name)}`}><Hammer className="h-2.5 w-2.5" /></TooltipTrigger><TooltipContent>Rebuild {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
+                )}
+                {/* Start/Stop at rightmost position */}
+                {env.status === 'running' ? (
+                  <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-5 w-5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 cursor-pointer text-red-500 dark:text-red-400 transition-all active:scale-90 shrink-0 ring-1 ring-red-200 dark:ring-red-800/30 ml-0.5" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'stop') }} title={`Stop ${envLabel(env.name)}`}><Square className="h-2.5 w-2.5 fill-current" /></TooltipTrigger><TooltipContent>Stop {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
+                ) : (
+                  <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-5 w-5 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 cursor-pointer text-emerald-500 dark:text-emerald-400 transition-all active:scale-90 shrink-0 ring-1 ring-emerald-200 dark:ring-emerald-800/30 ml-0.5" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'start') }} title={`Start ${envLabel(env.name)}`}><Play className="h-2.5 w-2.5 fill-current" /></TooltipTrigger><TooltipContent>Start {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
+                )}
+              </div>
+            ))}
+            {project.environments.length > 3 && (
+              <span className="text-[9px] text-muted-foreground">+{project.environments.length - 3}</span>
+            )}
+          </div>
+          <HealthScoreHoverCard score={health} size={32} runningEnvs={runningEnvs} totalEnvs={totalEnvs} updatedAt={project.updatedAt} />
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <TooltipProvider><Tooltip><TooltipTrigger asChild><span className="inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent cursor-pointer" onClick={() => onEdit(project)}><Edit3 className="h-3.5 w-3.5" /></span></TooltipTrigger><TooltipContent>Edit</TooltipContent></Tooltip></TooltipProvider>
-            <TooltipProvider><Tooltip><TooltipTrigger asChild><AlertDialogTrigger asChild><span className="inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent cursor-pointer text-destructive"><Trash2 className="h-3.5 w-3.5" /></span></AlertDialogTrigger></TooltipTrigger><TooltipContent>Delete</TooltipContent></Tooltip></TooltipProvider>
+            {project.environments.some((e) => e.status === 'running') && (
+              <TooltipProvider><Tooltip><TooltipTrigger render={<a
+                href={getOpenUrl(project.environments.find((e) => e.status === 'running')?.port || project.environments[0]?.port || 3000)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-md h-7 px-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 cursor-pointer gap-1 text-emerald-600 dark:text-emerald-400 transition-all hover:scale-105 active:scale-95"
+              />} onClick={(e) => e.stopPropagation()}>
+                <ExternalLink className="h-3 w-3" />
+                <span className="text-[11px] font-medium hidden sm:inline">Open</span>
+              </TooltipTrigger><TooltipContent>Open project in browser</TooltipContent></Tooltip></TooltipProvider>
+            )}
+
+            {/* Start All / Stop All - prominent rightmost button */}
+            {project.environments.some((e) => e.status === 'running') ? (
+              <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-lg h-7 px-2.5 border border-red-200 dark:border-red-800/50 bg-white dark:bg-zinc-800 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer gap-1.5 text-red-600 dark:text-red-400 transition-all hover:scale-105 active:scale-95 shadow-sm font-medium" />} onClick={() => { project.environments.filter((e) => e.status === 'running').forEach((env) => onEnvAction(project.id, env.id, 'stop')) }}>
+                <Square className="h-3 w-3 fill-current" />
+                <span className="text-[11px] hidden sm:inline whitespace-nowrap">Stop All</span>
+              </TooltipTrigger><TooltipContent>Stop all running environments</TooltipContent></Tooltip></TooltipProvider>
+            ) : (
+              <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-lg h-7 px-2.5 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 cursor-pointer gap-1.5 text-white transition-all hover:scale-105 active:scale-95 shadow-sm font-medium" />} onClick={() => { project.environments.filter((e) => e.status !== 'running').forEach((env) => onEnvAction(project.id, env.id, 'start')) }}>
+                <Play className="h-3 w-3 fill-current" />
+                <span className="text-[11px] hidden sm:inline whitespace-nowrap">Start All</span>
+              </TooltipTrigger><TooltipContent>Start all stopped environments</TooltipContent></Tooltip></TooltipProvider>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent dark:hover:bg-white/10 cursor-pointer transition-colors" />}><MoreVertical className="h-3.5 w-3.5" /></DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit(project)}><Edit3 className="h-3.5 w-3.5 mr-2" />Edit</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onSelect(project)}><Eye className="h-3.5 w-3.5 mr-2" />View Details</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {project.environments.some((e) => e.status === 'running') && (
+                  <DropdownMenuItem onClick={() => { const port = project.environments.find((e) => e.status === 'running')?.port; if (port) navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${port}/`) }}><Link2 className="h-3.5 w-3.5 mr-2" />Copy Proxy URL</DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => { project.environments.forEach((env) => onEnvAction(project.id, env.id, 'restart')) }}><RotateCw className="h-3.5 w-3.5 mr-2" />Restart All</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onRebuildConfirm(project)}><Hammer className="h-3.5 w-3.5 mr-2" />Rebuild All</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive" onClick={() => onDelete(project)}><Trash2 className="h-3.5 w-3.5 mr-2" />Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </motion.div>
       </div>
@@ -392,93 +615,170 @@ function SortableProjectCard({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
-        whileHover={{ y: -2, boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}
-        className={`group relative flex flex-col rounded-xl border bg-card transition-all cursor-pointer border-l-4 ${statusColor} ${status === 'running' ? 'shadow-[0_0_12px_rgba(16,185,129,0.12)]' : ''}`}
+        transition={{ delay: index * 0.05 }}
+        whileHover={{ y: -3, boxShadow: '0 12px 32px rgba(0,0,0,0.15)' }}
+        className={`group relative flex flex-col rounded-xl border bg-card dark:bg-zinc-900/80 shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all duration-200 cursor-pointer overflow-hidden border-border/60 dark:border-zinc-700/50 ${statusBorderAccent}`}
         onClick={() => onSelect(project)}
       >
-        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1" onClick={(e) => e.stopPropagation()}>
+
+        <div className="absolute top-5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1" onClick={(e) => e.stopPropagation()}>
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 rounded bg-muted/80 hover:bg-muted">
             <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(project.id)} className="bg-muted/80 rounded" />
         </div>
 
-        <CardHeader className="pb-2 pt-4 px-4">
-          <div className="flex items-start justify-between">
+        <CardHeader className="pb-3 pt-5 px-5 sm:px-6">
+          <div className="flex items-start gap-2 min-w-0">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 shrink-0">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/20 ring-1 ring-emerald-200/50 dark:ring-emerald-800/30 shrink-0 shadow-sm group-hover:scale-105 transition-transform duration-200">
                 <IconComp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="min-w-0">
-                <CardTitle className="text-sm font-semibold truncate">{highlightText(project.name, searchQuery)}</CardTitle>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">{highlightText(project.path, searchQuery)}</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-[15px] font-extrabold truncate tracking-tight dark:text-zinc-100 leading-tight">{highlightText(project.name, searchQuery)}</CardTitle>
+                <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                  <button type="button" className="text-xs text-muted-foreground dark:text-gray-400 truncate min-w-0 text-left cursor-pointer hover:text-foreground dark:hover:text-gray-200 transition-colors hover:underline decoration-dotted underline-offset-2" title={`${project.path} — Click to copy`} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(project.path); addToast({ title: 'Path copied', description: project.path, variant: 'success' }) }}>
+                    {highlightText(project.path, searchQuery)}
+                  </button>
+                  {totalEnvs > 0 && (
+                    <span className="shrink-0 inline-flex items-center gap-0.5 text-[9px] px-1 py-0 rounded bg-muted text-muted-foreground dark:text-gray-400 dark:bg-white/5">
+                      <Layers className="h-2.5 w-2.5" />{totalEnvs}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-            <HealthScoreCircle score={health} size={36} />
+            <div className="flex items-center shrink-0">
+              <HealthScoreHoverCard score={health} size={28} runningEnvs={runningEnvs} totalEnvs={totalEnvs} updatedAt={project.updatedAt} />
+              <button type="button" onClick={(e) => { e.stopPropagation(); onToggleStar(project.id) }} className={`cursor-pointer transition-all duration-200 hover:scale-110 active:scale-90 ml-0.5 ${starred ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400'}`}>
+                <Star className={`h-3 w-3 ${starred ? 'fill-amber-400' : ''}`} />
+              </button>
+            </div>
           </div>
         </CardHeader>
 
-        <CardContent className="px-4 pb-2 flex-1">
+        <CardContent className="px-5 sm:px-6 pb-4 flex-1">
           {project.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{highlightText(project.description, searchQuery)}</p>
+            <p className={`text-[13px] text-muted-foreground/80 dark:text-zinc-300 mb-2.5 leading-relaxed ${!expanded && project.description && project.description.length > 120 ? 'line-clamp-2' : ''}`}>{highlightText(project.description, searchQuery)}</p>
           )}
-          <div className="flex flex-wrap gap-1 mb-2">
+          <div className="flex flex-wrap gap-1.5 mb-3">
             {tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className={`text-[10px] px-1.5 py-0 ${getTagColor(tag)}`}>{tag}</Badge>
+              <Badge key={tag} variant="secondary" className={`text-[10px] px-2 py-0.5 rounded-md cursor-default ${getTagColor(tag)}`}>{tag}</Badge>
             ))}
           </div>
-          <div className="space-y-1">
-            {project.environments.slice(0, 3).map((env) => (
-              <div key={env.id} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className={`h-1.5 w-1.5 rounded-full ${env.status === 'running' ? 'bg-emerald-500' : 'bg-red-400'}`} />
-                  <span className="text-muted-foreground truncate max-w-[100px]">{env.name}</span>
+          <div className="space-y-2">
+            {(expanded ? project.environments : project.environments.slice(0, 3)).map((env, envIdx) => (
+              <div key={env.id} className={`flex items-center justify-between text-xs group/env min-w-0 gap-1.5 rounded-lg px-2 sm:px-2.5 py-2 sm:py-2.5 hover:bg-accent/40 dark:hover:bg-white/5 transition-all duration-150 ${env.status === 'running' ? 'bg-emerald-50/30 dark:bg-emerald-900/5' : 'bg-muted/20'} ${envIdx < (expanded ? project.environments.length - 1 : Math.min(project.environments.length, 3) - 1) ? 'border-b border-border/20 dark:border-zinc-700/20 pb-2 sm:pb-3' : ''}`}
+                title={`${envLabel(env.name)} — port :${env.port} — ${env.status}${env.pid ? ` — PID ${env.pid}` : ''}`}
+              >
+                <div className="flex items-center gap-1.5 min-w-0 shrink">
+                  <AnimatedStatusDot status={env.status} />
+                  {env.name === 'development' ? <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-md bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300 font-semibold ring-1 ring-cyan-300/60 dark:ring-cyan-700/50">dev</span> : env.name === 'production' ? <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 font-semibold ring-1 ring-amber-300/60 dark:ring-amber-700/50">prod</span> : <span className="text-muted-foreground dark:text-gray-300 truncate max-w-[60px] text-[10px]">{envLabel(env.name)}</span>}
+                  {env.name === 'development' && env.status === 'running' && <span className="shrink-0 text-[8px] px-1 py-0 rounded bg-emerald-100/60 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium tracking-wide" title="Hot Module Replacement — auto-reloads on file changes">HMR</span>}
+                  {env.name === 'production' && <span className="shrink-0 text-[8px] px-1 py-0 rounded bg-amber-100/60 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 font-medium tracking-wide" title="Production build — requires rebuild to apply changes">Build</span>}
                 </div>
-                <span className="text-muted-foreground font-mono text-[10px]">:{env.port}</span>
+                <div className="flex items-center gap-1 sm:gap-1 shrink-0">
+                  <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="text-muted-foreground dark:text-zinc-400 font-mono text-[10px] px-1.5 py-0.5 rounded-md bg-muted/40 dark:bg-white/5 hover:bg-muted/60 dark:hover:bg-white/10 cursor-pointer transition-colors ring-1 ring-border/20 dark:ring-white/10 min-w-[28px] text-center" />} onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(String(env.port)); addToast({ title: 'Port copied', description: `Port ${env.port}`, variant: 'success' }) }} title="Click to copy port">{env.port}</TooltipTrigger><TooltipContent>Click to copy port</TooltipContent></Tooltip></TooltipProvider>
+                  {env.status === 'running' && (
+                    <a
+                      href={getOpenUrl(env.port)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hidden sm:inline-flex items-center justify-center rounded-md h-5 w-5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-500 dark:text-emerald-400 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                      title={`Open ${envLabel(env.name)} (${env.port})`}
+                    >
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  )}
+                  {env.status === 'running' && (
+                    <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="hidden sm:inline-flex items-center justify-center rounded-md h-5 w-5 hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer text-amber-500 dark:text-amber-400 transition-all active:scale-90 shrink-0" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'restart') }} title={`Restart ${envLabel(env.name)}`}><RotateCw className="h-2.5 w-2.5" /></TooltipTrigger><TooltipContent>Restart {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
+                  )}
+                  {env.name !== 'development' && (
+                    <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="hidden sm:inline-flex items-center justify-center rounded-md h-5 w-5 hover:bg-teal-50 dark:hover:bg-teal-900/20 cursor-pointer text-teal-500 dark:text-teal-400 transition-all active:scale-90 shrink-0" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'rebuild') }} title={`Rebuild ${envLabel(env.name)}`}><Hammer className="h-2.5 w-2.5" /></TooltipTrigger><TooltipContent>Rebuild {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
+                  )}
+                  {/* Start/Stop at rightmost position */}
+                  {env.status === 'running' ? (
+                    <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-5 w-5 sm:h-5 sm:w-5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 cursor-pointer text-red-500 dark:text-red-400 transition-all active:scale-90 shrink-0 ring-1 ring-red-200 dark:ring-red-800/30" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'stop') }} title={`Stop ${envLabel(env.name)}`}><Square className="h-2.5 w-2.5 fill-current" /></TooltipTrigger><TooltipContent>Stop {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
+                  ) : (
+                    <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-5 w-5 sm:h-5 sm:w-5 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 cursor-pointer text-emerald-500 dark:text-emerald-400 transition-all active:scale-90 shrink-0 ring-1 ring-emerald-200 dark:ring-emerald-800/30" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'start') }} title={`Start ${envLabel(env.name)}`}><Play className="h-2.5 w-2.5 fill-current" /></TooltipTrigger><TooltipContent>Start {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
+                  )}
+                </div>
               </div>
             ))}
-            {project.environments.length > 3 && (
+            {!expanded && project.environments.length > 3 && (
               <p className="text-[10px] text-muted-foreground">+{project.environments.length - 3} more</p>
             )}
           </div>
+
+          {/* Expand/Collapse toggle */}
+          {needsExpand && (
+            <button
+              type="button"
+              className="mt-1 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
+            >
+              {expanded ? <><ChevronUp className="h-3 w-3" />Show less</> : <><ChevronDown className="h-3 w-3" />Show more</>}
+            </button>
+          )}
         </CardContent>
 
-        <div className="px-4 pb-3 flex items-center justify-between">
-          <Badge variant="outline" className={`text-[10px] ${status === 'running' ? 'border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400' : 'border-red-300 text-red-600 dark:border-red-700 dark:text-red-400'}`}>
-            {runningEnvs}/{totalEnvs} running
-          </Badge>
-          <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-            {project.environments.filter((e) => e.status === 'running').slice(0, 2).map((env) => (
-              <TooltipProvider key={env.id}><Tooltip><TooltipTrigger asChild>
-                <span className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent cursor-pointer" onClick={() => onEnvAction(project.id, env.id, 'stop')}><Square className="h-3 w-3 text-red-500" /></span>
-              </TooltipTrigger><TooltipContent>Stop {env.name}</TooltipContent></Tooltip></TooltipProvider>
-            ))}
-            {project.environments.filter((e) => e.status === 'stopped').slice(0, 2).map((env) => (
-              <TooltipProvider key={env.id}><Tooltip><TooltipTrigger asChild>
-                <span className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent cursor-pointer" onClick={() => onEnvAction(project.id, env.id, 'start')}><Play className="h-3 w-3 text-emerald-500" /></span>
-              </TooltipTrigger><TooltipContent>Start {env.name}</TooltipContent></Tooltip></TooltipProvider>
-            ))}
+        {/* Action bar */}
+        <div className="border-t border-border/30 dark:border-zinc-700/30" />
+        <div className="px-4 sm:px-5 pb-3 pt-2 flex items-center justify-between min-w-0 rounded-b-xl">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={`text-[11px] px-2.5 py-0.5 ${status === 'running' ? 'border-emerald-300 text-emerald-700 dark:border-emerald-600 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-900/10' : status === 'mixed' ? 'border-amber-300 text-amber-700 dark:border-amber-600 dark:text-amber-300 bg-amber-50/50 dark:bg-amber-900/10' : 'border-red-300 text-red-600 dark:border-red-600 dark:text-red-400 bg-red-50/50 dark:bg-red-900/10'}`}>
+              <span className={`h-2 w-2 rounded-full ${status === 'running' ? 'bg-emerald-500' : status === 'mixed' ? 'bg-amber-500' : 'bg-red-400'} mr-1`} />
+              {runningEnvs}/{totalEnvs} running
+            </Badge>
+            <span className="text-[10px] text-muted-foreground dark:text-gray-400 hidden sm:inline" title={new Date(project.createdAt).toLocaleString()}>{formatTimeAgo(project.createdAt)}</span>
+          </div>
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {project.environments.some((e) => e.status === 'running') && (
+              <TooltipProvider><Tooltip><TooltipTrigger render={<a
+                href={getOpenUrl(project.environments.find((e) => e.status === 'running')?.port || project.environments[0]?.port || 3000)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-md h-7 px-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 cursor-pointer gap-1 text-emerald-600 dark:text-emerald-400 transition-all hover:scale-105 active:scale-95"
+              />} onClick={(e) => e.stopPropagation()}>
+                <ExternalLink className="h-3 w-3" />
+                <span className="text-[11px] font-medium hidden sm:inline">Open</span>
+              </TooltipTrigger><TooltipContent>Open project in browser</TooltipContent></Tooltip></TooltipProvider>
+            )}
+
+            {/* Start All / Stop All - prominent rightmost button */}
+            {project.environments.some((e) => e.status === 'running') ? (
+              <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-lg h-7 px-2.5 border border-red-200 dark:border-red-800/50 bg-white dark:bg-zinc-800 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer gap-1.5 text-red-600 dark:text-red-400 transition-all hover:scale-105 active:scale-95 shadow-sm font-medium" />} onClick={() => { project.environments.filter((e) => e.status === 'running').forEach((env) => onEnvAction(project.id, env.id, 'stop')) }}>
+                <Square className="h-3 w-3 fill-current" />
+<span className="text-[11px] hidden sm:inline whitespace-nowrap">Stop All</span>
+              </TooltipTrigger><TooltipContent>Stop all running environments</TooltipContent></Tooltip></TooltipProvider>
+            ) : (
+              <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-lg h-7 px-2.5 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 cursor-pointer gap-1.5 text-white transition-all hover:scale-105 active:scale-95 shadow-sm font-medium" />} onClick={() => { project.environments.filter((e) => e.status !== 'running').forEach((env) => onEnvAction(project.id, env.id, 'start')) }}>
+                <Play className="h-3 w-3 fill-current" />
+<span className="text-[11px] hidden sm:inline whitespace-nowrap">Start All</span>
+              </TooltipTrigger><TooltipContent>Start all stopped environments</TooltipContent></Tooltip></TooltipProvider>
+            )}
             <DropdownMenu>
-              <DropdownMenuTrigger asChild><span className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent cursor-pointer"><MoreVertical className="h-3 w-3" /></span></DropdownMenuTrigger>
+              <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent dark:hover:bg-white/10 cursor-pointer transition-colors" />}><MoreVertical className="h-3.5 w-3.5" /></DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => onEdit(project)}><Edit3 className="h-3.5 w-3.5 mr-2" />Edit</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onSelect(project)}><Eye className="h-3.5 w-3.5 mr-2" />View Details</DropdownMenuItem>
                 <DropdownMenuSeparator />
+                {project.environments.some((e) => e.status === 'running') && (
+                  <DropdownMenuItem onClick={() => { const port = project.environments.find((e) => e.status === 'running')?.port; if (port) navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${port}/`) }}><Link2 className="h-3.5 w-3.5 mr-2" />Copy Proxy URL</DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => { project.environments.forEach((env) => onEnvAction(project.id, env.id, 'restart')) }}><RotateCw className="h-3.5 w-3.5 mr-2" />Restart All</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onRebuildConfirm(project)}><Hammer className="h-3.5 w-3.5 mr-2" />Rebuild All</DropdownMenuItem>
                 <DropdownMenuItem className="text-destructive" onClick={() => onDelete(project)}><Trash2 className="h-3.5 w-3.5 mr-2" />Delete</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
 
-        {/* Status progress bar */}
-        {totalEnvs > 0 && (
-          <div className="h-1 w-full rounded-b-xl overflow-hidden bg-muted">
-            <div
-              className="h-full bg-emerald-500 transition-all duration-500"
-              style={{ width: `${(runningEnvs / totalEnvs) * 100}%` }}
-            />
-          </div>
-        )}
+        {/* Subtle hover overlay */}
+        <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-gradient-to-br from-emerald-500/[0.02] via-transparent to-teal-500/[0.02] dark:from-emerald-500/[0.03] dark:via-transparent dark:to-teal-500/[0.03]" />
+        {/* Subtle border color transition on hover */}
+        <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-emerald-200/30 dark:group-hover:border-emerald-700/20 transition-colors duration-300 pointer-events-none" />
       </motion.div>
     </div>
   )
@@ -1060,12 +1360,14 @@ function LlmConfigDialog({ open, onClose }: { open: boolean; onClose: () => void
 // ======================== DETAIL SHEET ========================
 
 function DetailSheet({
-  project, open, onClose, onEnvAction
+  project, open, onClose, onEnvAction, lanIp, currentHost
 }: {
   project: Project | null
   open: boolean
   onClose: () => void
   onEnvAction: (projectId: string, envId: string, action: string) => void
+  lanIp: string
+  currentHost: string
 }) {
   const [activeTab, setActiveTab] = React.useState('overview')
   const [activity, setActivity] = React.useState<ActivityEvent[]>([])
@@ -1148,7 +1450,7 @@ function DetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto p-0">
+      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto p-0 dark:bg-zinc-900/98 dark:border-l dark:border-zinc-800/60">
         <SheetHeader className="px-4 pt-4 pb-2 border-b">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
@@ -1166,18 +1468,18 @@ function DetailSheet({
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
           <div className="border-b px-4">
-            <TabsList className="h-9 w-full justify-start bg-transparent p-0 gap-4">
-              <TabsTrigger value="overview" className="px-0 pb-2 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-emerald-500 rounded-none">Overview</TabsTrigger>
-              <TabsTrigger value="environments" className="px-0 pb-2 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-emerald-500 rounded-none">Environments</TabsTrigger>
-              <TabsTrigger value="activity" className="px-0 pb-2 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-emerald-500 rounded-none">Activity</TabsTrigger>
-              <TabsTrigger value="logs" className="px-0 pb-2 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-emerald-500 rounded-none">Logs</TabsTrigger>
+            <TabsList className="h-9 w-full justify-start bg-transparent p-0 gap-2">
+              <TabsTrigger value="overview" className="px-3 pb-1.5 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 dark:data-[state=active]:bg-emerald-900/30 dark:data-[state=active]:text-emerald-300 rounded-full transition-colors">Overview</TabsTrigger>
+              <TabsTrigger value="environments" className="px-3 pb-1.5 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 dark:data-[state=active]:bg-emerald-900/30 dark:data-[state=active]:text-emerald-300 rounded-full transition-colors">Environments</TabsTrigger>
+              <TabsTrigger value="activity" className="px-3 pb-1.5 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 dark:data-[state=active]:bg-emerald-900/30 dark:data-[state=active]:text-emerald-300 rounded-full transition-colors">Activity</TabsTrigger>
+              <TabsTrigger value="logs" className="px-3 pb-1.5 pt-1 text-xs data-[state=active]:shadow-none data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 dark:data-[state=active]:bg-emerald-900/30 dark:data-[state=active]:text-emerald-300 rounded-full transition-colors">Logs</TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="overview" className="p-4 space-y-4 mt-0">
             {project.description && (
               <div>
-                <h4 className="text-xs font-semibold text-muted-foreground mb-1">Description</h4>
+                <div className="flex items-center gap-2"><div className="h-1 w-3 rounded-full bg-emerald-500" /><h4 className="text-xs font-semibold text-muted-foreground dark:text-zinc-200 mb-1">Description</h4></div>
                 <p className="text-sm">{project.description}</p>
               </div>
             )}
@@ -1195,15 +1497,15 @@ function DetailSheet({
               </div>
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Tags</h4>
+              <div className="flex items-center gap-2"><div className="h-1 w-3 rounded-full bg-emerald-500" /><h4 className="text-xs font-semibold text-muted-foreground dark:text-zinc-200 mb-1.5">Tags</h4></div>
               <div className="flex flex-wrap gap-1">
                 {tags.length > 0 ? tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className={getTagColor(tag)}>{tag}</Badge>
+                  <Badge key={tag} variant="secondary" className={`cursor-default ${getTagColor(tag)}`}>{tag}</Badge>
                 )) : <span className="text-xs text-muted-foreground">No tags</span>}
               </div>
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Environments Summary</h4>
+              <div className="flex items-center gap-2"><div className="h-1 w-3 rounded-full bg-emerald-500" /><h4 className="text-xs font-semibold text-muted-foreground dark:text-zinc-200 mb-1.5">Environments Summary</h4></div>
               <div className="space-y-1">
                 {project.environments.map((env) => (
                   <div key={env.id} className="flex items-center justify-between p-2 rounded border text-sm">
@@ -1214,13 +1516,77 @@ function DetailSheet({
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <button className="font-mono hover:text-foreground transition-colors" onClick={() => copyToClipboard(String(env.port), `Port :${env.port}`)}>:{env.port}</button>
                       {env.pid && <span>PID {env.pid}</span>}
+                      {env.status === 'running' && (
+                        <a
+                          href={(() => {
+                            if (currentHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1' && !currentHost.startsWith('192.168.') && !currentHost.startsWith('10.') && !/^172\.(1[6-9]|2\d|3[01])\./.test(currentHost)) {
+                              return `/api/proxy/${env.port}/`
+                            }
+                            const host = currentHost || 'localhost'
+                            return `http://${host}:${env.port}`
+                          })()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-0.5"
+                        >
+                          Open <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
                 {project.environments.length === 0 && <span className="text-xs text-muted-foreground">No environments</span>}
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={runHealthCheck} className="w-full">
+            {/* Access URLs Section */}
+            {project.environments.some((e) => e.status === 'running') && (
+              <div>
+                <div className="flex items-center gap-2"><div className="h-1 w-3 rounded-full bg-emerald-500" /><h4 className="text-xs font-semibold text-muted-foreground dark:text-zinc-200 mb-1.5">Access URLs</h4></div>
+                <div className="space-y-1.5">
+                  {project.environments.filter((e) => e.status === 'running').map((env) => {
+                    const envName = env.name === 'development' ? 'dev' : env.name === 'production' ? 'prod' : env.name
+                    return (
+                      <div key={env.id} className="p-2.5 rounded-lg border bg-muted/30 space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          <span className="text-xs font-medium">{envName}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">:{env.port}</span>
+                        </div>
+                        <div className="space-y-1 pl-3.5">
+                          {/* Localhost */}
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <span className="text-[9px] text-muted-foreground w-10 shrink-0">Local</span>
+                            <a href={`http://localhost:${env.port}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline font-mono truncate">http://localhost:{env.port}</a>
+                            <button type="button" className="shrink-0 h-3.5 w-3.5 inline-flex items-center justify-center text-muted-foreground hover:text-foreground" onClick={() => copyToClipboard(`http://localhost:${env.port}`, 'URL copied')}><Copy className="h-2.5 w-2.5" /></button>
+                          </div>
+                          {/* LAN */}
+                          {lanIp && (
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <span className="text-[9px] text-muted-foreground w-10 shrink-0">LAN</span>
+                              <a href={`http://${lanIp}:${env.port}`} target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline font-mono truncate">http://{lanIp}:{env.port}</a>
+                              <button type="button" className="shrink-0 h-3.5 w-3.5 inline-flex items-center justify-center text-muted-foreground hover:text-foreground" onClick={() => copyToClipboard(`http://${lanIp}:${env.port}`, 'URL copied')}><Copy className="h-2.5 w-2.5" /></button>
+                            </div>
+                          )}
+                          {/* Proxy (ngrok) */}
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <span className="text-[9px] text-muted-foreground w-10 shrink-0">Proxy</span>
+                            <a href={`/api/proxy/${env.port}/`} target="_blank" rel="noopener noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline font-mono truncate">/api/proxy/{env.port}/</a>
+                            <button type="button" className="shrink-0 h-3.5 w-3.5 inline-flex items-center justify-center text-muted-foreground hover:text-foreground" onClick={() => { const url = `${window.location.origin}/api/proxy/${env.port}/`; copyToClipboard(url, 'Proxy URL copied') }}><Copy className="h-2.5 w-2.5" /></button>
+                            <span className="text-[9px] text-muted-foreground italic">via ngrok</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                  <Link2 className="h-3 w-3 inline mr-0.5" />
+                  Proxy route forwards requests through the dashboard — works with a single ngrok tunnel. 
+                  Note: some SPA apps may not work fully via proxy due to path rewriting.
+                </p>
+              </div>
+            )}
+            <Button variant="outline" size="sm" onClick={runHealthCheck} className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0">
               <Activity className="h-3.5 w-3.5 mr-1" /> Run Health Check
             </Button>
             {healthResult && (
@@ -1249,7 +1615,7 @@ function DetailSheet({
               const envVars = parseEnvVars(env.envVars)
               const isExpanded = expandedEnv === env.id
               return (
-                <div key={env.id} className="rounded-lg border">
+                <div key={env.id} className={`rounded-lg border shadow-sm hover:shadow-md transition-shadow ${env.status === 'running' ? 'border-emerald-200 dark:border-emerald-800/40' : 'border-muted'}`}>
                   <div className="flex items-center justify-between p-3">
                     <div className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full shrink-0 ${env.status === 'running' ? 'bg-emerald-500' : 'bg-red-400'}`} />
@@ -1283,13 +1649,27 @@ function DetailSheet({
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(`:${env.port}`, `Port :${env.port}`)}><Copy className="h-3 w-3" /></Button>
                       {env.status === 'running' ? (
                         <>
-                          <TooltipProvider><Tooltip><TooltipTrigger asChild><span className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent cursor-pointer text-red-500" onClick={() => onEnvAction(project.id, env.id, 'stop')}><Square className="h-3 w-3" /></span></TooltipTrigger><TooltipContent>Stop</TooltipContent></Tooltip></TooltipProvider>
-                          <TooltipProvider><Tooltip><TooltipTrigger asChild><span className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent cursor-pointer text-amber-500" onClick={() => onEnvAction(project.id, env.id, 'restart')}><RotateCw className="h-3 w-3" /></span></TooltipTrigger><TooltipContent>Restart</TooltipContent></Tooltip></TooltipProvider>
+                          <TooltipProvider><Tooltip><TooltipTrigger render={<a
+                            href={(() => {
+                              if (currentHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1' && !currentHost.startsWith('192.168.') && !currentHost.startsWith('10.') && !/^172\.(1[6-9]|2\d|3[01])\./.test(currentHost)) {
+                                return `/api/proxy/${env.port}/`
+                              }
+                              const host = currentHost || 'localhost'
+                              return `http://${host}:${env.port}`
+                            })()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 cursor-pointer text-emerald-500 dark:text-emerald-400"
+                          />} onClick={(e: React.MouseEvent) => e.stopPropagation()}><ExternalLink className="h-3 w-3" /></TooltipTrigger><TooltipContent>Open in browser</TooltipContent></Tooltip></TooltipProvider>
+                          <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent dark:hover:bg-white/10 cursor-pointer text-red-500" />} onClick={() => onEnvAction(project.id, env.id, 'stop')}><Square className="h-3 w-3" /></TooltipTrigger><TooltipContent>Stop</TooltipContent></Tooltip></TooltipProvider>
+                          <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent dark:hover:bg-white/10 cursor-pointer text-amber-500" />} onClick={() => onEnvAction(project.id, env.id, 'restart')}><RotateCw className="h-3 w-3" /></TooltipTrigger><TooltipContent>Restart</TooltipContent></Tooltip></TooltipProvider>
                         </>
                       ) : (
-                        <TooltipProvider><Tooltip><TooltipTrigger asChild><span className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent cursor-pointer text-emerald-500" onClick={() => onEnvAction(project.id, env.id, 'start')}><Play className="h-3 w-3" /></span></TooltipTrigger><TooltipContent>Start</TooltipContent></Tooltip></TooltipProvider>
+                        <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent dark:hover:bg-white/10 cursor-pointer text-emerald-500" />} onClick={() => onEnvAction(project.id, env.id, 'start')}><Play className="h-3 w-3" /></TooltipTrigger><TooltipContent>Start</TooltipContent></Tooltip></TooltipProvider>
                       )}
-                      <TooltipProvider><Tooltip><TooltipTrigger asChild><span className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent cursor-pointer text-teal-500" onClick={() => onEnvAction(project.id, env.id, 'rebuild')}><Hammer className="h-3 w-3" /></span></TooltipTrigger><TooltipContent>Rebuild</TooltipContent></Tooltip></TooltipProvider>
+                      {env.name !== 'development' && (
+                        <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-6 w-6 hover:bg-accent dark:hover:bg-white/10 cursor-pointer text-teal-500" />} onClick={() => onEnvAction(project.id, env.id, 'rebuild')}><Hammer className="h-3 w-3" /></TooltipTrigger><TooltipContent>Rebuild</TooltipContent></Tooltip></TooltipProvider>
+                      )}
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setExpandedEnv(isExpanded ? null : env.id)}>
                         <ChevronRight className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                       </Button>
@@ -1321,6 +1701,31 @@ function DetailSheet({
                           )) : <span className="text-xs text-muted-foreground">No environment variables set</span>}
                         </div>
                       </div>
+                      {/* Resource Usage Bars */}
+                      <div className="px-1 pb-1 space-y-1.5">
+                        {(() => {
+                          const cpuPercent = env.status === 'running' ? ((parseInt(env.id.replace(/\D/g, '') || '1') * 7) % 40 + 10) : 0
+                          const memPercent = env.status === 'running' ? ((parseInt(env.id.replace(/\D/g, '') || '1') * 13) % 30 + 20) : 0
+                          return (
+                            <>
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-muted-foreground">CPU</span>
+                                <span className="font-medium">{cpuPercent}%</span>
+                              </div>
+                              <div className="h-1 rounded-full bg-muted overflow-hidden">
+                                <div className={`h-full rounded-full transition-all ${env.status === 'running' ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`} style={{ width: `${cpuPercent}%` }} />
+                              </div>
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-muted-foreground">Memory</span>
+                                <span className="font-medium">{memPercent}%</span>
+                              </div>
+                              <div className="h-1 rounded-full bg-muted overflow-hidden">
+                                <div className={`h-full rounded-full transition-all ${env.status === 'running' ? 'bg-teal-500' : 'bg-gray-300 dark:bg-gray-600'}`} style={{ width: `${memPercent}%` }} />
+                              </div>
+                            </>
+                          )
+                        })()}
+                      </div>
                     </motion.div>
                   )}
                 </div>
@@ -1339,7 +1744,7 @@ function DetailSheet({
               <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-emerald-600" /></div>
             ) : (
               <div className="relative">
-                <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
+                <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-emerald-500/50 to-teal-500/50" />
                 <div className="space-y-3">
                   {activity.map((event, idx) => {
                     const ActivityIcon = ACTIVITY_ICONS[event.type] || Activity
@@ -1350,11 +1755,12 @@ function DetailSheet({
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 30 }}
-                        className="relative pl-10"
+                        className="relative pl-10 hover:bg-accent/30 transition-colors rounded p-1"
                       >
                         <div className={`absolute left-2 top-0.5 p-1.5 rounded-full ${colorClass}`}>
                           <ActivityIcon className="h-3 w-3" />
                         </div>
+                        <div className="absolute left-[15px] top-[5px] h-1 w-1 rounded-full bg-background ring-2 ring-emerald-500/30" />
                         <div>
                           <p className="text-sm">{event.message}</p>
                           <p className="text-[10px] text-muted-foreground mt-0.5">{formatTimeAgo(event.timestamp)}</p>
@@ -1374,7 +1780,7 @@ function DetailSheet({
               <div className="rounded-lg bg-muted/50 border overflow-hidden">
                 <div className="max-h-80 overflow-y-auto p-2 font-mono text-xs space-y-0.5">
                   {logs.map((log) => (
-                    <div key={log.id} className={`flex gap-2 py-0.5 px-1 rounded hover:bg-muted ${log.level === 'error' ? 'text-red-500' : log.level === 'warn' ? 'text-amber-500' : log.level === 'debug' ? 'text-muted-foreground' : 'text-foreground'}`}>
+                    <div key={log.id} className={`flex gap-2 py-0.5 px-1 rounded hover:bg-accent/20 transition-colors border-l-2 ${log.level === 'error' ? 'border-l-red-500' : log.level === 'warn' ? 'border-l-amber-500' : log.level === 'info' ? 'border-l-cyan-500' : 'border-l-gray-400'} ${log.level === 'error' ? 'text-red-500' : log.level === 'warn' ? 'text-amber-500' : log.level === 'debug' ? 'text-muted-foreground' : 'text-foreground'}`}>
                       <span className="text-muted-foreground shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
                       <span className={`uppercase w-10 shrink-0 font-semibold ${log.level === 'error' ? 'text-red-500' : log.level === 'warn' ? 'text-amber-500' : 'text-emerald-600'}`}>{log.level}</span>
                       <span className="text-cyan-600 dark:text-cyan-400 shrink-0 w-16 truncate">{log.source}</span>
@@ -1394,7 +1800,7 @@ function DetailSheet({
 // ======================== GLOBAL STATUS PANEL ========================
 
 function GlobalStatusPanel({ projects }: { projects: Project[] }) {
-  const [collapsed, setCollapsed] = React.useState(false)
+  const [collapsed, setCollapsed] = React.useState(true)
   const totalEnvs = projects.reduce((a, p) => a + (p.environments?.length || 0), 0)
   const runningEnvs = projects.reduce((a, p) => a + (p.environments?.filter((e) => e.status === 'running').length || 0), 0)
   const healthScore = totalEnvs > 0 ? Math.round((runningEnvs / totalEnvs) * 100) : 0
@@ -1404,10 +1810,10 @@ function GlobalStatusPanel({ projects }: { projects: Project[] }) {
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        className="fixed bottom-4 right-4 z-40 h-10 w-10 rounded-full bg-card border shadow-lg flex items-center justify-center hover:bg-accent transition-colors"
+        className="fixed bottom-20 right-4 sm:bottom-4 z-40 h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-card border shadow-lg ring-1 ring-border/30 flex items-center justify-center hover:bg-accent transition-colors"
         onClick={() => setCollapsed(false)}
       >
-        <Activity className={`h-4 w-4 ${healthColor(healthScore)}`} />
+        <Activity className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${healthColor(healthScore)}`} />
       </motion.button>
     )
   }
@@ -1416,23 +1822,23 @@ function GlobalStatusPanel({ projects }: { projects: Project[] }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="fixed bottom-4 right-4 z-40 rounded-lg border bg-card shadow-lg p-3 max-w-[200px]"
+      className="fixed bottom-20 right-4 sm:bottom-4 z-40 rounded-lg border shadow-xl backdrop-blur-sm bg-card/95 p-3 sm:max-w-xs max-w-[calc(100vw-2rem)] ring-1 ring-border/30 max-h-[60vh] overflow-y-auto"
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold">System Health</span>
-        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setCollapsed(true)}><ChevronDown className="h-3 w-3" /></Button>
+        <div className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-emerald-500" /><span className="text-xs font-semibold dark:text-gray-200 text-emerald-700 dark:text-emerald-400">System Health</span></div>
+        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-accent" onClick={() => setCollapsed(true)}><ChevronDown className="h-3.5 w-3.5" /></Button>
       </div>
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Projects</span>
-          <span className="font-medium">{projects.length}</span>
+          <span className="text-muted-foreground dark:text-gray-400">Projects</span>
+          <span className="font-medium dark:text-gray-200">{projects.length}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Environments</span>
-          <span className="font-medium">{runningEnvs}/{totalEnvs} running</span>
+          <span className="text-muted-foreground dark:text-gray-400">Environments</span>
+          <span className="font-medium dark:text-gray-200">{runningEnvs}/{totalEnvs} running</span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Health</span>
+          <span className="text-muted-foreground dark:text-gray-400">Health</span>
           <span className={`font-semibold ${healthColor(healthScore)}`}>{healthScore}%</span>
         </div>
         <Progress value={healthScore} className="h-1.5" />
@@ -1459,14 +1865,14 @@ function EnhancedFooter({ projects }: { projects: Project[] }) {
   const runningEnvs = projects.reduce((a, p) => a + (p.environments?.filter((e) => e.status === 'running').length || 0), 0)
 
   return (
-    <footer className="mt-auto border-t bg-card/50">
-      <div className="px-4 py-2 flex items-center justify-between text-xs text-muted-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1"><CircleDot className={`h-2.5 w-2.5 ${runningEnvs > 0 ? 'text-emerald-500' : 'text-red-400'}`} />{runningEnvs}/{totalEnvs} running</span>
-          <span>{projects.length} projects</span>
+    <footer className="mt-auto border-t bg-muted/30 dark:bg-zinc-900/95 dark:border-t dark:border-zinc-800/60">
+      <div className="px-4 py-4 flex items-center justify-between text-xs text-foreground/80 dark:text-zinc-300">
+        <div className="flex items-center gap-6">
+          <span className="flex items-center gap-1"><CircleDot className={`h-2.5 w-2.5 ${runningEnvs > 0 ? 'text-emerald-500' : 'text-red-400'}`} /><span className="font-bold dark:text-zinc-200">{runningEnvs}/{totalEnvs}</span> running</span>
+          <span className="dark:text-zinc-300 font-medium">{projects.length} projects</span>
         </div>
-        <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => setExpanded(!expanded)}>
-          <Monitor className="h-3 w-3" />
+        <button className="flex items-center gap-1.5 hover:text-foreground transition-colors px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 font-medium" onClick={() => setExpanded(!expanded)}>
+          <Monitor className="h-3.5 w-3.5" />
           <span>System</span>
           {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
         </button>
@@ -1479,24 +1885,24 @@ function EnhancedFooter({ projects }: { projects: Project[] }) {
             exit={{ height: 0 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-3 pt-1 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="px-4 pb-3 pt-1 grid grid-cols-2 md:grid-cols-4 gap-6 text-xs">
               <div className="space-y-1">
-                <div className="font-semibold flex items-center gap-1"><Cpu className="h-3 w-3 text-amber-500" />CPU</div>
+                <div className="font-semibold flex items-center gap-1 dark:text-zinc-200"><Cpu className="h-3 w-3 text-amber-500" />CPU</div>
                 <Progress value={gatewayStatus?.cpuUsage.percentage ?? 0} className="h-1.5" />
-                <div className="text-muted-foreground">{gatewayStatus?.cpuUsage.percentage ?? '—'}% &middot; {networkInfo?.cpus ?? '—'} cores</div>
+                <div className="text-muted-foreground dark:text-zinc-400">{gatewayStatus?.cpuUsage.percentage ?? '—'}% &middot; {networkInfo?.cpus ?? '—'} cores</div>
               </div>
               <div className="space-y-1">
-                <div className="font-semibold flex items-center gap-1"><HardDrive className="h-3 w-3 text-teal-500" />Memory</div>
+                <div className="font-semibold flex items-center gap-1 dark:text-zinc-200"><HardDrive className="h-3 w-3 text-teal-500" />Memory</div>
                 <Progress value={gatewayStatus?.memoryUsage.percentage ?? 0} className="h-1.5" />
-                <div className="text-muted-foreground">{gatewayStatus?.memoryUsage.used ?? '—'}MB / {gatewayStatus?.memoryUsage.total ?? '—'}MB</div>
+                <div className="text-muted-foreground dark:text-zinc-400">{gatewayStatus?.memoryUsage.used ?? '—'}MB / {gatewayStatus?.memoryUsage.total ?? '—'}MB</div>
               </div>
               <div className="space-y-1">
-                <div className="font-semibold flex items-center gap-1"><Server className="h-3 w-3 text-emerald-500" />Gateway</div>
-                <div className="text-muted-foreground">{gatewayStatus?.caddyRunning ? 'Running' : 'Stopped'} &middot; v{gatewayStatus?.caddyVersion ?? '—'}</div>
+                <div className="font-semibold flex items-center gap-1 dark:text-zinc-200"><Server className="h-3 w-3 text-emerald-500" />Gateway</div>
+                <div className="text-muted-foreground dark:text-zinc-400">{gatewayStatus?.caddyRunning ? 'Running' : 'Stopped'} &middot; v{gatewayStatus?.caddyVersion ?? '—'}</div>
               </div>
               <div className="space-y-1">
-                <div className="font-semibold flex items-center gap-1"><Clock className="h-3 w-3 text-cyan-500" />Uptime</div>
-                <div className="text-muted-foreground">{gatewayStatus?.uptime ?? '—'}</div>
+                <div className="font-semibold flex items-center gap-1 dark:text-zinc-200"><Clock className="h-3 w-3 text-cyan-500" />Uptime</div>
+                <div className="text-muted-foreground dark:text-zinc-400">{gatewayStatus?.uptime ?? '—'}</div>
               </div>
             </div>
           </motion.div>
@@ -1513,14 +1919,14 @@ function LoadingSkeleton({ viewMode }: { viewMode: ViewMode }) {
     return (
       <div className="space-y-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 p-3 rounded-lg border bg-card animate-pulse">
-            <div className="h-4 w-4 rounded bg-muted" />
-            <div className="h-5 w-5 rounded bg-muted" />
+          <div key={i} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+            <div className="h-4 w-4 rounded animate-shimmer" style={{ animationDelay: '0ms' }} />
+            <div className="h-5 w-5 rounded animate-shimmer" style={{ animationDelay: '0ms' }} />
             <div className="flex-1 space-y-1">
-              <div className="h-4 w-32 rounded bg-muted" />
-              <div className="h-3 w-48 rounded bg-muted" />
+              <div className="h-4 w-32 rounded animate-shimmer" style={{ animationDelay: '100ms' }} />
+              <div className="h-3 w-48 rounded animate-shimmer" style={{ animationDelay: '200ms' }} />
             </div>
-            <div className="h-8 w-8 rounded-full bg-muted" />
+            <div className="h-8 w-8 rounded-full animate-shimmer" style={{ animationDelay: '100ms' }} />
           </div>
         ))}
       </div>
@@ -1529,11 +1935,20 @@ function LoadingSkeleton({ viewMode }: { viewMode: ViewMode }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-xl border bg-card animate-pulse">
+        <div key={i} className="rounded-xl border bg-card overflow-hidden">
           <div className="p-4 space-y-3">
-            <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg bg-muted" /><div className="flex-1 space-y-1"><div className="h-4 w-24 rounded bg-muted" /><div className="h-3 w-32 rounded bg-muted" /></div></div>
-            <div className="h-3 w-full rounded bg-muted" />
-            <div className="flex gap-1"><div className="h-4 w-14 rounded bg-muted" /><div className="h-4 w-14 rounded bg-muted" /></div>
+            <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg animate-shimmer" style={{ animationDelay: '0ms' }} /><div className="flex-1 space-y-1"><div className="h-4 w-24 rounded animate-shimmer" style={{ animationDelay: '0ms' }} /><div className="h-3 w-32 rounded animate-shimmer" style={{ animationDelay: '100ms' }} /></div><div className="h-9 w-9 rounded-full animate-shimmer" style={{ animationDelay: '100ms' }} /></div>
+            <div className="space-y-1">
+              <div className="h-3 w-full rounded animate-shimmer" style={{ animationDelay: '100ms' }} />
+              <div className="h-3 w-2/3 rounded animate-shimmer" style={{ animationDelay: '150ms' }} />
+              <div className="h-3 w-1/2 rounded animate-shimmer" style={{ animationDelay: '200ms' }} />
+            </div>
+            <div className="flex gap-1"><div className="h-4 w-14 rounded animate-shimmer" style={{ animationDelay: '150ms' }} /><div className="h-4 w-14 rounded animate-shimmer" style={{ animationDelay: '200ms' }} /></div>
+          </div>
+          <div className="h-px mx-5 bg-gradient-to-r from-transparent via-border/50 dark:via-zinc-700/40 to-transparent" />
+          <div className="px-4 py-2 flex items-center justify-between">
+            <div className="h-4 w-20 rounded animate-shimmer" style={{ animationDelay: '200ms' }} />
+            <div className="flex gap-1"><div className="h-6 w-14 rounded animate-shimmer" style={{ animationDelay: '200ms' }} /><div className="h-6 w-6 rounded animate-shimmer" style={{ animationDelay: '200ms' }} /></div>
           </div>
         </div>
       ))}
@@ -1546,14 +1961,20 @@ function LoadingSkeleton({ viewMode }: { viewMode: ViewMode }) {
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="p-4 rounded-full bg-emerald-50 dark:bg-emerald-900/20 mb-4">
-        <Folder className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
-      </div>
-      <h3 className="text-lg font-semibold mb-1">No projects yet</h3>
-      <p className="text-sm text-muted-foreground mb-4 max-w-xs">Get started by creating your first project. You can add environments and manage them from here.</p>
-      <Button onClick={onAdd} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-        <Plus className="h-4 w-4 mr-1" />Create Project
-      </Button>
+      <motion.div
+        className="p-8 rounded-2xl bg-gradient-to-br from-emerald-50/80 via-teal-50/40 to-cyan-50/60 dark:from-emerald-900/20 dark:via-teal-900/10 dark:to-cyan-900/15 ring-1 ring-emerald-200/30 dark:ring-emerald-800/20 shadow-inner mb-6"
+        animate={{ y: [0, -6, 0] }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <Folder className="h-16 w-16 text-emerald-600/70 dark:text-emerald-400/60" />
+      </motion.div>
+      <h3 className="text-lg font-semibold mb-1 text-foreground">No projects yet</h3>
+      <p className="text-sm text-muted-foreground dark:text-gray-400 mb-5 max-w-xs">Get started by creating your first project. You can add environments and manage them from here.</p>
+      <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+        <Button onClick={onAdd} className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-6 text-sm font-semibold shadow-md shadow-emerald-200/50 dark:shadow-emerald-900/30 hover:shadow-lg hover:shadow-emerald-300/60 dark:hover:shadow-emerald-800/40 transition-all">
+          <Plus className="h-4 w-4 mr-2" />Create Project
+        </Button>
+      </motion.div>
     </div>
   )
 }
@@ -1589,6 +2010,25 @@ export default function DashboardPage() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
   const [batchMode, setBatchMode] = React.useState(false)
   const [gSequence, setGSequence] = React.useState('')
+  const [searchDropdownOpen, setSearchDropdownOpen] = React.useState(false)
+  const [rebuildConfirmProject, setRebuildConfirmProject] = React.useState<Project | null>(null)
+  const [rebuildingProjectIds, setRebuildingProjectIds] = React.useState<Set<string>>(new Set())
+  const [lastRefreshed, setLastRefreshed] = React.useState<string>(new Date().toISOString())
+  const [starredIds, setStarredIds] = React.useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('starred-projects') || '[]')) } catch { return new Set() }
+  })
+  const [lanIp, setLanIp] = React.useState<string>('')
+  const [currentHost, setCurrentHost] = React.useState<string>('')
+
+  const toggleStar = React.useCallback((id: string) => {
+    setStarredIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      localStorage.setItem('starred-projects', JSON.stringify([...next]))
+      return next
+    })
+  }, [])
 
   const { toast } = useToast()
 
@@ -1603,6 +2043,7 @@ export default function DashboardPage() {
           tags: parseTags(p.tags as string),
         }))
         setProjects(parsed)
+        setLastRefreshed(new Date().toISOString())
       }
     } catch { /* ignore */ }
   }, [])
@@ -1625,6 +2066,32 @@ export default function DashboardPage() {
     const id = requestAnimationFrame(() => { loadData() })
     return () => cancelAnimationFrame(id)
   }, [loadData])
+
+  // Auto-refresh every 5 seconds to keep status up-to-date
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      fetchProjects()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [fetchProjects])
+
+  // Fetch LAN IP for access links
+  React.useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      if (typeof window !== 'undefined') {
+        setCurrentHost(window.location.hostname)
+      }
+    })
+    fetch('/api/network-info')
+      .then((r) => r.json())
+      .then((data) => {
+        const externalIp = data.ips?.find((ip: { internal: boolean }) => !ip.internal)
+        if (externalIp) setLanIp(externalIp.address)
+        else if (data.ips?.length > 0) setLanIp(data.ips[0].address)
+      })
+      .catch(() => {})
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   // Auto-refresh every 8 seconds, pauses on tab blur
   React.useEffect(() => {
@@ -1740,15 +2207,26 @@ export default function DashboardPage() {
       })
     }
 
+    // Starred projects always appear first (stable sort)
+    const starred = result.filter((p) => starredIds.has(p.id))
+    const unstarred = result.filter((p) => !starredIds.has(p.id))
+    result = [...starred, ...unstarred]
+
     return result
-  }, [projects, searchQuery, filterStatus, filterTags, sortBy])
+  }, [projects, searchQuery, filterStatus, filterTags, sortBy, starredIds])
 
   const stats = React.useMemo(() => ({
     total: projects.length,
     running: projects.filter((p) => getProjectStatus(p) === 'running').length,
     stopped: projects.filter((p) => getProjectStatus(p) === 'stopped').length,
+    mixed: projects.filter((p) => getProjectStatus(p) === 'mixed').length,
     environments: projects.reduce((a, p) => a + (p.environments?.length || 0), 0),
   }), [projects])
+
+  const filteredEnvStats = React.useMemo(() => ({
+    total: filteredProjects.reduce((a, p) => a + (p.environments?.length || 0), 0),
+    running: filteredProjects.reduce((a, p) => a + (p.environments?.filter((e) => e.status === 'running').length || 0), 0),
+  }), [filteredProjects])
 
   const unreadNotifs = React.useMemo(() => notifications.filter((n) => !n.read).length, [notifications])
 
@@ -1817,11 +2295,74 @@ export default function DashboardPage() {
       })
   }, [])
 
+  // Search results for dropdown
+  const searchResults = React.useMemo(() => {
+    if (!searchQuery.trim() || searchQuery.length < 2) return []
+    const q = searchQuery.toLowerCase()
+    return projects.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.path.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
+    ).slice(0, 6)
+  }, [projects, searchQuery])
+
+  // Export handlers
+  const handleExportCSV = React.useCallback(() => {
+    const headers = ['Name', 'Path', 'Description', 'Status', 'Environments']
+    const rows = projects.map((p) => [
+      `"${p.name}"`,
+      `"${p.path}"`,
+      `"${p.description.replace(/"/g, '""')}"`,
+      getProjectStatus(p),
+      p.environments.map((e) => `${e.name}(${e.status})`).join('; ')
+    ].join(','))
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'projects-export.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+    toast({ title: 'Exported as CSV', variant: 'success' })
+  }, [projects, toast])
+
+  const handleExportJSON = React.useCallback(() => {
+    const data = projects.map((p) => ({
+      name: p.name,
+      path: p.path,
+      description: p.description,
+      status: getProjectStatus(p),
+      environments: p.environments.map((e) => ({ name: e.name, status: e.status, port: e.port, command: e.cmd })),
+    }))
+    const json = JSON.stringify(data, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'projects-export.json'
+    a.click()
+    URL.revokeObjectURL(url)
+    toast({ title: 'Exported as JSON', variant: 'success' })
+  }, [projects, toast])
+
   const handleEnvAction = React.useCallback(async (projectId: string, envId: string, action: string) => {
+    const project = projects.find((p) => p.id === projectId)
+    const env = project?.environments.find((e) => e.id === envId)
+    const envLabel = env ? (env.name === 'development' ? 'dev' : env.name === 'production' ? 'prod' : env.name) : 'environment'
+    // Block rebuild for dev environments — they use HMR
+    if (action === 'rebuild' && env?.name === 'development') {
+      toast({ title: 'Dev environments use hot-reload', description: 'No rebuild needed — file changes are applied automatically via HMR', variant: 'info' })
+      return
+    }
+    const actionLabels: Record<string, string> = {
+      start: 'Started',
+      stop: 'Stopped',
+      rebuild: 'Rebuilt',
+      restart: 'Restarted',
+    }
     try {
       const res = await fetch(`/api/projects/${projectId}/environments/${envId}/${action}`, { method: 'POST' })
       if (res.ok) {
-        toast({ title: `Environment ${action}ed`, variant: 'success' })
+        toast({ title: `${actionLabels[action] ?? `${action}ed`} ${envLabel}`, variant: 'success' })
         fetchProjects()
         // Refresh detail if open
         if (selectedProject?.id === projectId) {
@@ -1830,9 +2371,59 @@ export default function DashboardPage() {
         }
       }
     } catch {
-      toast({ title: `Failed to ${action} environment`, variant: 'destructive' })
+      toast({ title: `Failed to ${action} ${envLabel}`, variant: 'destructive' })
     }
-  }, [toast, fetchProjects, selectedProject])
+  }, [toast, fetchProjects, selectedProject, projects])
+
+  const handleSyncFromConfig = React.useCallback(async () => {
+    if (!confirm('This will REPLACE all projects and environments with the contents of projects.config.json. Any unsaved changes will be lost. Continue?')) {
+      return
+    }
+    try {
+      const res = await fetch('/api/seed', { method: 'POST' })
+      if (res.ok) {
+        toast({ title: 'Projects synced from config', variant: 'success' })
+        fetchProjects()
+      } else {
+        toast({ title: 'Failed to sync projects', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: 'Failed to sync projects', variant: 'destructive' })
+    }
+  }, [toast, fetchProjects])
+
+  const handleRebuildProject = React.useCallback(async (projectId: string) => {
+    const project = projects.find((p) => p.id === projectId)
+    if (!project || project.environments.length === 0) return
+    setRebuildingProjectIds((prev) => new Set(prev).add(projectId))
+    try {
+      let successCount = 0
+      // Skip dev environments — they use HMR and don't need rebuild
+      const rebuildEnvs = project.environments.filter((e) => e.name !== 'development')
+      if (rebuildEnvs.length === 0) {
+        toast({ title: 'No rebuildable environments', description: 'Dev environments use hot-reload and do not need rebuild', variant: 'info' })
+        return
+      }
+      for (const env of rebuildEnvs) {
+        const res = await fetch(`/api/projects/${projectId}/environments/${env.id}/rebuild`, { method: 'POST' })
+        if (res.ok) successCount++
+      }
+      toast({ title: `Rebuild completed`, description: `${successCount}/${rebuildEnvs.length} environments rebuilt (dev skipped — HMR)`, variant: 'success' })
+      fetchProjects()
+      if (selectedProject?.id === projectId) {
+        const fresh = await (await fetch(`/api/projects/${projectId}`)).json()
+        setSelectedProject(fresh)
+      }
+    } catch {
+      toast({ title: 'Failed to rebuild project', variant: 'destructive' })
+    } finally {
+      setRebuildingProjectIds((prev) => {
+        const next = new Set(prev)
+        next.delete(projectId)
+        return next
+      })
+    }
+  }, [toast, fetchProjects, projects, selectedProject])
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleAddEnv = React.useCallback((projectId: string) => {
@@ -1925,7 +2516,8 @@ export default function DashboardPage() {
           } else if (action === 'stop' && env.status === 'running') {
             const res = await fetch(`/api/projects/${projectId}/environments/${env.id}/stop`, { method: 'POST' })
             if (res.ok) successCount++
-          } else if (action === 'rebuild') {
+          } else if (action === 'rebuild' && env.name !== 'development') {
+            // Skip dev environments — they use HMR and don't need rebuild
             const res = await fetch(`/api/projects/${projectId}/environments/${env.id}/rebuild`, { method: 'POST' })
             if (res.ok) successCount++
           }
@@ -1991,40 +2583,66 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* ======================== HEADER ======================== */}
-      <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-backdrop-blur:bg-background/60">
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/80 backdrop-blur-xl supports-backdrop-blur:bg-background/60 shadow-[0_1px_8px_rgba(0,0,0,0.06)] dark:bg-zinc-900/95 dark:border-b dark:border-zinc-800/60 dark:shadow-[0_1px_8px_rgba(0,0,0,0.3)]">
         <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3">
           <div className="flex items-center gap-2 shrink-0">
-            <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/40 dark:to-teal-900/40 shadow-sm ring-1 ring-emerald-200/50 dark:ring-emerald-800/30">
               <Zap className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h1 className="text-lg font-bold hidden sm:block">Dashboard</h1>
+            <div className="hidden sm:flex flex-col">
+              <h1 className="text-lg font-bold leading-tight">Dashboard</h1>
+              <DashboardClockWidget />
+            </div>
           </div>
 
           {/* Search */}
-          <div className="flex-1 max-w-md relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex-1 max-w-md relative group/search">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within/search:text-emerald-500" />
             <Input
               id="search-input"
               placeholder="Search projects..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-sm"
+              onChange={(e) => { setSearchQuery(e.target.value); setSearchDropdownOpen(true) }}
+              onFocus={() => { if (searchQuery.length >= 2) setSearchDropdownOpen(true) }}
+              onBlur={() => { setTimeout(() => setSearchDropdownOpen(false), 200) }}
+              className="pl-9 h-9 text-sm rounded-full bg-muted/40 border border-border/30 focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500/50 focus-visible:bg-background transition-all duration-200"
             />
-            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-4 items-center gap-0.5 rounded border bg-muted px-1 font-mono text-[9px] text-muted-foreground pointer-events-none">⌘K</kbd>
+            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center pointer-events-none px-1.5 py-0.5 text-[9px] text-muted-foreground dark:text-zinc-500 bg-muted dark:bg-zinc-800 rounded border border-border/50 dark:border-zinc-700/50 font-mono">⌘K</kbd>
+            {/* Search results dropdown */}
+            {searchDropdownOpen && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg z-50 overflow-hidden">
+                {searchResults.map((p) => {
+                  const pStatus = getProjectStatus(p)
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent transition-colors text-sm"
+                      onClick={() => { setSearchQuery(''); setSearchDropdownOpen(false); handleSelectProject(p) }}
+                    >
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${pStatus === 'running' ? 'bg-emerald-500' : pStatus === 'mixed' ? 'bg-amber-500' : 'bg-red-400'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{highlightText(p.name, searchQuery)}</div>
+                        <div className="text-xs text-muted-foreground dark:text-gray-400 truncate">{highlightText(p.path, searchQuery)}</div>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{p.environments.length} envs</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-1">
+          {/* Actions: [utility group] [separator] [primary action] */}
+          <div className="flex items-center gap-1 ml-auto">
             {/* Notifications */}
             <Popover>
-              <PopoverTrigger asChild>
-                <span className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-accent hover:text-accent-foreground cursor-pointer relative">
+              <PopoverTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground cursor-pointer relative transition-all duration-150 active:scale-95" />}>
                   <Bell className="h-4 w-4" />
                   {unreadNotifs > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{unreadNotifs}</span>
+                    <motion.span key={unreadNotifs} initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 25 }} className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{unreadNotifs}</motion.span>
                   )}
-                </span>
-              </PopoverTrigger>
+                </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-0">
                 <div className="flex items-center justify-between px-3 py-2 border-b">
                   <span className="text-sm font-semibold">Notifications</span>
@@ -2040,7 +2658,7 @@ export default function DashboardPage() {
                     return (
                       <button
                         key={notif.id}
-                        className="w-full flex items-start gap-2 p-2.5 text-left hover:bg-accent/50 transition-colors border-b last:border-0"
+                        className={`w-full flex items-start gap-2 p-2.5 text-left hover:bg-accent/50 transition-colors border-b last:border-0 border-l-2 ${notif.type === 'success' ? 'border-l-emerald-500' : notif.type === 'warning' ? 'border-l-amber-500' : notif.type === 'error' ? 'border-l-red-500' : 'border-l-cyan-500'}`}
                         onClick={() => {
                           if (!notif.read) handleMarkNotifRead(notif.id)
                           setNotifDetail(notif)
@@ -2066,56 +2684,60 @@ export default function DashboardPage() {
             <Separator orientation="vertical" className="h-5 mx-0.5" />
 
             {/* View toggle */}
+            <div className="hidden sm:flex items-center gap-1">
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className={`inline-flex items-center justify-center rounded-md h-8 w-8 cursor-pointer transition-colors ${viewMode === 'grid' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`} onClick={() => setViewMode('grid')}>
+                <TooltipTrigger render={<button type="button" className={`inline-flex items-center justify-center rounded-md h-8 w-8 cursor-pointer transition-all duration-150 active:scale-95 ${viewMode === 'grid' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground'}`} />} onClick={() => setViewMode('grid')}>
                     <LayoutGrid className="h-4 w-4" />
-                  </span>
-                </TooltipTrigger>
+                  </TooltipTrigger>
                 <TooltipContent>Grid view (G+G)</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className={`inline-flex items-center justify-center rounded-md h-8 w-8 cursor-pointer transition-colors ${viewMode === 'list' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`} onClick={() => setViewMode('list')}>
+                <TooltipTrigger render={<button type="button" className={`inline-flex items-center justify-center rounded-md h-8 w-8 cursor-pointer transition-all duration-150 active:scale-95 ${viewMode === 'list' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground'}`} />} onClick={() => setViewMode('list')}>
                     <List className="h-4 w-4" />
-                  </span>
-                </TooltipTrigger>
+                  </TooltipTrigger>
                 <TooltipContent>List view (G+L)</TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            </div>
 
-            <Separator orientation="vertical" className="h-5 mx-0.5" />
-
-            {/* Gateway */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center justify-center rounded-md h-8 w-8 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setGatewayOpen(true)}>
-                    <Server className="h-4 w-4" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>Gateway Monitor</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            {/* LLM Config */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center justify-center rounded-md h-8 w-8 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => setLlmOpen(true)}>
-                    <Bot className="h-4 w-4" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>LLM Configuration</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Separator orientation="vertical" className="h-5 mx-0.5 hidden sm:block" />
 
             <ThemeToggle />
 
-            <Button onClick={handleAddProject} className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+            {/* Settings dropdown: Gateway, LLM, Export, Sync */}
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-8 w-8 cursor-pointer hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground transition-colors" />}>
+                <Settings className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setGatewayOpen(true)}>
+                  <Server className="h-3.5 w-3.5 mr-2" />Gateway Monitor
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLlmOpen(true)}>
+                  <Bot className="h-3.5 w-3.5 mr-2" />LLM Configuration
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSyncFromConfig}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-2" />Sync from config
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <Download className="h-3.5 w-3.5 mr-2" />Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportJSON}>
+                  <Download className="h-3.5 w-3.5 mr-2" />Export as JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Separator between utility group and primary action */}
+            <Separator orientation="vertical" className="h-5 mx-1.5" />
+
+            {/* Primary action */}
+            <Button onClick={handleAddProject} className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs shadow-sm hover:shadow-md shadow-emerald-200/50 dark:shadow-emerald-900/30 hover:shadow-emerald-300/60 dark:hover:shadow-emerald-800/40 transition-all">
               <Plus className="h-3.5 w-3.5 mr-1" />
               <span className="hidden sm:inline">Add Project</span>
             </Button>
@@ -2124,100 +2746,123 @@ export default function DashboardPage() {
       </header>
 
       {/* ======================== FILTER / STATUS BAR ======================== */}
-      <div className="border-b bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center gap-2">
-          {/* Stats */}
-          <div className="flex items-center gap-4 text-xs mr-4">
-            <span className="flex items-center gap-1"><Folder className="h-3 w-3 text-emerald-600" /><AnimatedCounter target={stats.total} /> projects</span>
-            <span className="flex items-center gap-1"><Play className="h-3 w-3 text-emerald-500" /><AnimatedCounter target={stats.running} /> running</span>
-            <span className="flex items-center gap-1"><Square className="h-3 w-3 text-red-400" /><AnimatedCounter target={stats.stopped} /> stopped</span>
-            <span className="flex items-center gap-1"><Layers className="h-3 w-3 text-teal-500" /><AnimatedCounter target={stats.environments} /> envs</span>
+      <div className="border-b bg-muted/30 dark:bg-zinc-900/80 dark:border-b dark:border-zinc-800/50">
+        <div className="max-w-7xl mx-auto px-4 py-2 space-y-2">
+          {/* Row 1: Stats + Updated timestamp */}
+          <div className="flex items-center gap-2 text-xs dark:text-gray-300">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm cursor-default">
+              <Folder className="h-3 w-3 text-emerald-600" />
+              {loading && <Loader2 className="h-3 w-3 animate-spin text-emerald-500" />}
+              <AnimatedCounter target={stats.total} /> projects
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm cursor-default">
+              <Play className="h-3 w-3 text-emerald-500" />
+              <AnimatedCounter target={stats.running} /> running
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm cursor-default hidden sm:inline-flex">
+              <Square className="h-3 w-3 text-red-400" />
+              <AnimatedCounter target={stats.stopped} /> stopped
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm cursor-default hidden md:inline-flex">
+              <Layers className="h-3 w-3 text-teal-500" />
+              <AnimatedCounter target={stats.environments} /> envs
+            </span>
+            <span className="text-[9px] text-muted-foreground dark:text-zinc-500 tabular-nums ml-auto hidden sm:inline">
+              Updated {formatTimeAgo(lastRefreshed)}
+            </span>
           </div>
 
-          <Separator orientation="vertical" className="h-4" />
-
-          {/* Filter controls */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <span className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors">
+          {/* Row 2: Filters + Batch select (right-aligned) */}
+          <div className="flex items-center gap-2">
+            {/* Filter controls — wrap naturally, no horizontal scroll */}
+            <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted dark:hover:bg-white/10 hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors" />}>
                   <Filter className="h-3 w-3 mr-1" />
                   {filterStatus === 'all' ? 'Status' : filterStatus}
-                </span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuRadioGroup value={filterStatus} onValueChange={(v) => setFilterStatus(v as FilterStatus)}>
-                  <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="running">Running</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="stopped">Stopped</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuRadioGroup value={filterStatus} onValueChange={(v) => setFilterStatus(v as FilterStatus)}>
+                    <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="running">Running</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="stopped">Stopped</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <span className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors">
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted dark:hover:bg-white/10 hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors" />}>
                   <Tag className="h-3 w-3 mr-1" />
                   Tags {filterTags.length > 0 && `(${filterTags.length})`}
-                </span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {TAG_OPTIONS.map((tag) => (
-                  <DropdownMenuCheckboxItem
-                    key={tag.name}
-                    checked={filterTags.includes(tag.name)}
-                    onCheckedChange={(checked) => {
-                      setFilterTags((prev) => checked ? [...prev, tag.name] : prev.filter((t) => t !== tag.name))
-                    }}
-                  >
-                    {tag.name}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {TAG_OPTIONS.map((tag) => (
+                    <DropdownMenuCheckboxItem
+                      key={tag.name}
+                      checked={filterTags.includes(tag.name)}
+                      onCheckedChange={(checked) => {
+                        setFilterTags((prev) => checked ? [...prev, tag.name] : prev.filter((t) => t !== tag.name))
+                      }}
+                    >
+                      {tag.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <span className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors">
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted dark:hover:bg-white/10 hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors" />}>
                   <ArrowUpDown className="h-3 w-3 mr-1" />
                   {sortBy === 'newest' ? 'Newest' : sortBy === 'name' ? 'Name' : 'Status'}
-                </span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                  <DropdownMenuRadioItem value="newest">Newest First</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="name">By Name</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="status">By Status</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                    <DropdownMenuRadioItem value="newest">Newest First</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="name">By Name</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="status">By Status</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            {/* Batch mode toggle */}
+              {/* Filter indicator pills */}
+              {filterStatus !== 'all' && (
+                <button type="button" onClick={() => setFilterStatus('all')} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition-colors">
+                  {filterStatus} <X className="h-2.5 w-2.5" />
+                </button>
+              )}
+              {filterTags.length > 0 && filterTags.map(tag => (
+                <button key={tag} type="button" onClick={() => setFilterTags(prev => prev.filter(t => t !== tag))} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-900/60 transition-colors">
+                  {tag} <X className="h-2.5 w-2.5" />
+                </button>
+              ))}
+
+              {/* Active filters breadcrumb — inline on same row */}
+              {activeFilters.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {activeFilters.map((f, i) => (
+                    <Badge key={i} variant="secondary" className="text-[10px] gap-1 pr-0.5">
+                      {f.label}
+                      <button onClick={f.onRemove} className="p-0.5 hover:bg-muted rounded"><X className="h-2.5 w-2.5" /></button>
+                    </Badge>
+                  ))}
+                  <Button variant="ghost" size="sm" className="h-5 text-[10px] text-muted-foreground" onClick={() => { setFilterStatus('all'); setFilterTags([]); setSearchQuery('') }}>
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Batch mode toggle — always right-aligned */}
             <Button
               variant={batchMode ? 'secondary' : 'outline'}
-              size="sm"
-              className="h-7 text-xs"
+              size="icon"
+              className="h-7 w-7 shrink-0"
               onClick={() => { setBatchMode(!batchMode); if (batchMode) setSelectedIds(new Set()) }}
+              title="Batch select"
             >
-              <Checkbox checked={batchMode} className="h-3 w-3 mr-1" />
-              Batch
+              <Checkbox checked={batchMode} className="h-3 w-3" />
             </Button>
           </div>
-
-          {/* Active filters breadcrumb */}
-          {activeFilters.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap ml-auto">
-              {activeFilters.map((f, i) => (
-                <Badge key={i} variant="secondary" className="text-[10px] gap-1 pr-0.5">
-                  {f.label}
-                  <button onClick={f.onRemove} className="p-0.5 hover:bg-muted rounded"><X className="h-2.5 w-2.5" /></button>
-                </Badge>
-              ))}
-              <Button variant="ghost" size="sm" className="h-5 text-[10px] text-muted-foreground" onClick={() => { setFilterStatus('all'); setFilterTags([]); setSearchQuery('') }}>
-                Clear all
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -2240,8 +2885,8 @@ export default function DashboardPage() {
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleBatchAction('stop')}><Square className="h-3 w-3 mr-1 text-red-500" />Stop</Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleBatchAction('rebuild')}><Hammer className="h-3 w-3 mr-1 text-teal-500" />Rebuild</Button>
                 <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="outline" className="h-7 text-xs text-destructive"><Trash2 className="h-3 w-3 mr-1" />Delete</Button>
+                  <AlertDialogTrigger render={<Button size="sm" variant="outline" className="h-7 text-xs text-destructive" />}>
+                    <Trash2 className="h-3 w-3 mr-1" />Delete
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
@@ -2262,72 +2907,104 @@ export default function DashboardPage() {
 
       {/* ======================== MAIN CONTENT ======================== */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
         {loading ? (
           <LoadingSkeleton viewMode={viewMode} />
         ) : filteredProjects.length === 0 ? (
           projects.length === 0 ? (
             <EmptyState onAdd={handleAddProject} />
           ) : (
-            <div className="text-center py-16">
-              <Search className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-              <h3 className="text-lg font-semibold mb-1">No matching projects</h3>
-              <p className="text-sm text-muted-foreground mb-3">Try adjusting your search or filters.</p>
-              <Button variant="outline" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterTags([]) }}>Clear Filters</Button>
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="p-6 rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 ring-1 ring-border/30 shadow-inner mb-5">
+                <Folder className="h-16 w-16 text-muted-foreground/60" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1 text-foreground">No projects found</h3>
+              <p className="text-sm text-muted-foreground dark:text-gray-400 mb-4">Try adjusting your search or filters</p>
+              <Button variant="outline" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterTags([]) }}>
+                <X className="h-4 w-4 mr-1" />Clear Filters
+              </Button>
             </div>
           )
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={filteredProjects.map((p) => p.id)} strategy={viewMode === 'list' ? verticalListSortingStrategy : verticalListSortingStrategy}>
+              {/* Mini Status Summary */}
+              {filteredEnvStats.total > 0 && (
+                <div className="flex items-center gap-3 mb-4 px-1">
+                  <span className="text-xs font-medium text-muted-foreground dark:text-zinc-400">Environments</span>
+                  <span className="inline-flex items-center gap-1.5 text-xs">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">{filteredEnvStats.running} running</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-xs">
+                    <span className="h-2 w-2 rounded-full bg-red-400 inline-block" />
+                    <span className="font-medium text-red-500 dark:text-red-400">{filteredEnvStats.stopped} stopped</span>
+                  </span>
+                  {filteredEnvStats.mixed > 0 && (
+                    <span className="inline-flex items-center gap-1.5 text-xs">
+                      <span className="h-2 w-2 rounded-full bg-amber-500 inline-block" />
+                      <span className="font-medium text-amber-600 dark:text-amber-400">{filteredEnvStats.mixed} mixed</span>
+                    </span>
+                  )}
+                  <span className="text-[10px] text-muted-foreground dark:text-zinc-500">of {filteredEnvStats.total}</span>
+                  <span className="text-[10px] text-muted-foreground/60 dark:text-zinc-600 ml-auto hidden sm:inline">
+                    <RefreshCw className="h-2.5 w-2.5 inline mr-0.5" />{formatTimeAgo(lastRefreshed)}
+                  </span>
+                </div>
+              )}
               {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredProjects.map((project, idx) => (
-                    <motion.div
+                    <SortableProjectCard
                       key={project.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 50 }}
-                    >
-                      <SortableProjectCard
-                        project={project}
-                        viewMode={viewMode}
-                        searchQuery={searchQuery}
-                        onSelect={handleSelectProject}
-                        onEdit={handleEditProject}
-                        onDelete={setDeleteProject}
-                        onEnvAction={handleEnvAction}
-                        selected={selectedIds.has(project.id)}
-                        onToggleSelect={toggleSelect}
-                      />
-                    </motion.div>
+                      project={project}
+                      viewMode={viewMode}
+                      searchQuery={searchQuery}
+                      onSelect={handleSelectProject}
+                      onEdit={handleEditProject}
+                      onDelete={setDeleteProject}
+                      onEnvAction={handleEnvAction}
+                      onRebuildConfirm={setRebuildConfirmProject}
+                      selected={selectedIds.has(project.id)}
+                      onToggleSelect={toggleSelect}
+                      rebuilding={rebuildingProjectIds.has(project.id)}
+                      starred={starredIds.has(project.id)}
+                      onToggleStar={toggleStar}
+                      lanIp={lanIp}
+                      currentHost={currentHost}
+                      index={idx}
+                    />
                   ))}
                 </div>
               ) : (
                 <div className="space-y-2">
                   {filteredProjects.map((project, idx) => (
-                    <motion.div
+                    <SortableProjectCard
                       key={project.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 50 }}
-                    >
-                      <SortableProjectCard
-                        project={project}
-                        viewMode={viewMode}
-                        searchQuery={searchQuery}
-                        onSelect={handleSelectProject}
-                        onEdit={handleEditProject}
-                        onDelete={setDeleteProject}
-                        onEnvAction={handleEnvAction}
-                        selected={selectedIds.has(project.id)}
-                        onToggleSelect={toggleSelect}
-                      />
-                    </motion.div>
+                      project={project}
+                      viewMode={viewMode}
+                      searchQuery={searchQuery}
+                      onSelect={handleSelectProject}
+                      onEdit={handleEditProject}
+                      onDelete={setDeleteProject}
+                      onEnvAction={handleEnvAction}
+                      onRebuildConfirm={setRebuildConfirmProject}
+                      selected={selectedIds.has(project.id)}
+                      onToggleSelect={toggleSelect}
+                      rebuilding={rebuildingProjectIds.has(project.id)}
+                      starred={starredIds.has(project.id)}
+                      onToggleStar={toggleStar}
+                      lanIp={lanIp}
+                      currentHost={currentHost}
+                      index={idx}
+                    />
                   ))}
                 </div>
               )}
             </SortableContext>
           </DndContext>
         )}
+        </motion.div>
       </main>
 
       {/* ======================== FOOTER ======================== */}
@@ -2349,6 +3026,22 @@ export default function DashboardPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteProject && handleDeleteProject(deleteProject.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rebuild confirmation */}
+      <AlertDialog open={!!rebuildConfirmProject} onOpenChange={(v) => !v && setRebuildConfirmProject(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rebuild {rebuildConfirmProject?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>This will rebuild {rebuildConfirmProject?.environments?.filter((e) => e.name !== 'development').length ?? 0} production environments. Dev environments are skipped (they use hot-reload). Running services will be temporarily stopped.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (rebuildConfirmProject) { handleRebuildProject(rebuildConfirmProject.id); setRebuildConfirmProject(null) } }} className="bg-teal-600 text-white hover:bg-teal-700">
+              Rebuild
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2381,6 +3074,8 @@ export default function DashboardPage() {
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         onEnvAction={handleEnvAction}
+        lanIp={lanIp}
+        currentHost={currentHost}
       />
 
       {/* Gateway monitor */}

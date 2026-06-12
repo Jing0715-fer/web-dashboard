@@ -12,8 +12,9 @@ import {
   Monitor, Database, Smartphone, Cpu as CpuIcon, GitBranch,
   CheckCircle2, XCircle, Loader2,
   Bot, ArrowUpDown,
-  CircleDot, Download, Star, ExternalLink, Link2
+  CircleDot, Download, Star, ExternalLink, Link2, Plug, PlugZap
 } from 'lucide-react'
+
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, DragEndEvent
@@ -40,6 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useToast } from '@/hooks/use-toast'
@@ -160,6 +162,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   shield: Shield,
   zap: Zap,
   monitor: Monitor,
+  'plug-zap': PlugZap,
 }
 
 const ACTIVITY_ICONS: Record<string, React.ElementType> = {
@@ -411,6 +414,139 @@ function DashboardClockWidget() {
   )
 }
 
+// ======================== HERMES BRIDGE TOGGLE ========================
+// Small switch embedded in the Hermes Web project card. Controls the
+// "Hermes Bridge" project's bridge environment (port 3210). Status is
+// driven by the dashboard's existing 5s project refresh — the toggle is
+// purely a start/stop trigger.
+
+const HERMES_BRIDGE_NAME = 'Hermes Bridge'
+
+function HermesBridgeToggle({ compact = false }: { compact?: boolean }) {
+  const [busy, setBusy] = React.useState(false)
+  const [localError, setLocalError] = React.useState<string | null>(null)
+
+  const { bridgeProject, bridgeEnv, bridgeRunning } = useBridgeStatus()
+
+  const handleToggle = React.useCallback(async (next: boolean) => {
+    if (!bridgeProject || !bridgeEnv || busy) return
+    setBusy(true)
+    setLocalError(null)
+    try {
+      const res = await fetch(`/api/projects/${bridgeProject.id}/environments/${bridgeEnv.id}/${next ? 'start' : 'stop'}`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const txt = await res.text()
+        setLocalError(txt.slice(0, 120))
+      }
+    } catch (e: any) {
+      setLocalError(e?.message || 'network error')
+    } finally {
+      setBusy(false)
+    }
+  }, [bridgeProject, bridgeEnv, busy])
+
+  if (!bridgeProject) {
+    // Bridge project not configured in dashboard — render nothing
+    return null
+  }
+
+  if (compact) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 ${bridgeRunning ? 'bg-emerald-50/60 dark:bg-emerald-900/20' : 'hover:bg-muted/60 dark:hover:bg-white/5'}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              ) : (
+                <PlugZap className={`h-3.5 w-3.5 ${bridgeRunning ? 'text-emerald-500' : 'text-muted-foreground'}`} />
+              )}
+              <Switch
+                checked={bridgeRunning}
+                onCheckedChange={handleToggle}
+                disabled={busy}
+                onClick={(e) => e.stopPropagation()}
+                className="scale-75 data-[state=checked]:bg-emerald-500"
+                aria-label="Hermes bridge"
+              />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Hermes bridge · :3210 · {bridgeRunning ? 'running' : 'stopped'}
+            {localError ? ` · error: ${localError}` : ''}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  return (
+    <div
+      className={`absolute top-3 right-3 z-20 inline-flex items-center gap-2 rounded-full backdrop-blur px-2.5 py-1 ring-1 shadow-sm ${bridgeRunning ? 'bg-emerald-50/80 dark:bg-emerald-900/30 ring-emerald-200/60 dark:ring-emerald-700/40' : 'bg-background/80 dark:bg-zinc-900/80 ring-border/50'}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {busy ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+      ) : (
+        <PlugZap className={`h-3.5 w-3.5 ${bridgeRunning ? 'text-emerald-500' : 'text-muted-foreground'}`} />
+      )}
+      <span className={`text-[10px] font-medium select-none ${bridgeRunning ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground dark:text-zinc-400'}`}>
+        Bridge{busy ? '…' : bridgeRunning ? ' on' : ''}
+      </span>
+      <Switch
+        checked={bridgeRunning}
+        onCheckedChange={handleToggle}
+        disabled={busy}
+        onClick={(e) => e.stopPropagation()}
+        className="scale-90 data-[state=checked]:bg-emerald-500"
+        aria-label="Hermes bridge"
+      />
+    </div>
+  )
+}
+
+// Hook: read the Hermes Bridge project + its first environment from the
+// parent's projects list. Returns null entries if the project isn't configured.
+function useBridgeStatus() {
+  const [bridgeProject, setBridgeProject] = React.useState<Project | null>(null)
+  const [bridgeEnv, setBridgeEnv] = React.useState<Environment | null>(null)
+  const [bridgeRunning, setBridgeRunning] = React.useState(false)
+
+  // Use a global event bus via window so the toggle can react to project list
+  // updates without re-rendering the whole dashboard. The dashboard dispatches
+  // 'projects-updated' on every fetchProjects() call (we add that separately).
+  const refresh = React.useCallback(() => {
+    try {
+      // @ts-expect-error - injected by DashboardPage
+      const projects: Project[] = window.__dashboardProjects || []
+      const proj = projects.find((p) => p.name === HERMES_BRIDGE_NAME) || null
+      setBridgeProject(proj)
+      const env = proj?.environments?.[0] || null
+      setBridgeEnv(env)
+      setBridgeRunning(env?.status === 'running')
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  React.useEffect(() => {
+    refresh()
+    const id = setInterval(refresh, 3000)
+    window.addEventListener('projects-updated', refresh)
+    return () => {
+      clearInterval(id)
+      window.removeEventListener('projects-updated', refresh)
+    }
+  }, [refresh])
+
+  return { bridgeProject, bridgeEnv, bridgeRunning }
+}
+
 // ======================== ANIMATED STATUS DOT ========================
 
 function AnimatedStatusDot({ status }: { status: string }) {
@@ -436,7 +572,8 @@ function AnimatedStatusDot({ status }: { status: string }) {
 function SortableProjectCard({
   project, viewMode, searchQuery, onSelect, onEdit, onDelete,
   onEnvAction, onRebuildConfirm, selected, onToggleSelect, rebuilding,
-  starred, onToggleStar, lanIp, currentHost, index = 0
+  starred, onToggleStar, lanIp, currentHost, index = 0,
+  batchMode = false
 }: {
   project: Project
   viewMode: ViewMode
@@ -454,6 +591,7 @@ function SortableProjectCard({
   lanIp: string
   currentHost: string
   index?: number
+  batchMode?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: project.id })
   const [expanded, setExpanded] = React.useState(false)
@@ -499,10 +637,17 @@ function SortableProjectCard({
           className={`group flex items-center gap-3 p-3.5 rounded-lg border bg-card dark:bg-zinc-900/80 shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:shadow-md dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)] hover:bg-accent/50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer overflow-hidden border-border/60 dark:border-zinc-700/50 ${statusBorderAccent}`}
           onClick={() => onSelect(project)}
         >
-          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()} title="Drag to reorder">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
-          <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(project.id)} onClick={(e) => e.stopPropagation()} className="shrink-0" />
+          {batchMode && (
+            <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(project.id)} onClick={(e) => e.stopPropagation()} className="shrink-0" />
+          )}
+          {project.name === 'Hermes Web' && (
+            <span onClick={(e) => e.stopPropagation()}>
+              <HermesBridgeToggle compact />
+            </span>
+          )}
           <button type="button" onClick={(e) => { e.stopPropagation(); onToggleStar(project.id) }} className={`shrink-0 cursor-pointer transition-colors hover:scale-110 active:scale-90 transition-transform duration-150 ${starred ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400'}`}>
             <Star className={`h-4 w-4 ${starred ? 'fill-amber-400' : ''}`} />
           </button>
@@ -621,12 +766,19 @@ function SortableProjectCard({
         onClick={() => onSelect(project)}
       >
 
-        <div className="absolute top-5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1" onClick={(e) => e.stopPropagation()}>
-          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 rounded bg-muted/80 hover:bg-muted">
+        <div className="absolute top-5 left-2 z-10 flex gap-1 items-start" onClick={(e) => e.stopPropagation()}>
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 rounded bg-muted/80 hover:bg-muted" title="Drag to reorder">
             <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
-          <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(project.id)} className="bg-muted/80 rounded" />
+          {batchMode && (
+            <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(project.id)} className="bg-muted/80 rounded" />
+          )}
         </div>
+
+        {/* Hermes Bridge toggle (only on Hermes Web card) */}
+        {project.name === 'Hermes Web' && (
+          <HermesBridgeToggle />
+        )}
 
         <CardHeader className="pb-3 pt-5 px-5 sm:px-6">
           <div className="flex items-start gap-2 min-w-0">
@@ -1369,6 +1521,8 @@ function DetailSheet({
   lanIp: string
   currentHost: string
 }) {
+  if (!project) return null
+
   const [activeTab, setActiveTab] = React.useState('overview')
   const [activity, setActivity] = React.useState<ActivityEvent[]>([])
   const [logs, setLogs] = React.useState<LogEntry[]>([])
@@ -2038,12 +2192,20 @@ export default function DashboardPage() {
       const res = await fetch('/api/projects')
       if (res.ok) {
         const data = await res.json()
-        const parsed = data.map((p: Record<string, unknown>) => ({
+        const parsed = (data.projects ?? []).map((p: Record<string, unknown>) => ({
           ...p,
           tags: parseTags(p.tags as string),
         }))
         setProjects(parsed)
         setLastRefreshed(new Date().toISOString())
+        // Publish projects for cross-component consumers (e.g. HermesBridgeToggle)
+        try {
+          // @ts-expect-error - window extension for sibling components
+          window.__dashboardProjects = parsed
+          window.dispatchEvent(new CustomEvent('projects-updated'))
+        } catch {
+          // ignore
+        }
       }
     } catch { /* ignore */ }
   }, [])
@@ -2066,6 +2228,14 @@ export default function DashboardPage() {
     const id = requestAnimationFrame(() => { loadData() })
     return () => cancelAnimationFrame(id)
   }, [loadData])
+
+  // Auto-refresh every 5 seconds to keep status up-to-date
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      fetchProjects()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [fetchProjects])
 
   // Fetch LAN IP for access links
   React.useEffect(() => {
@@ -2368,6 +2538,9 @@ export default function DashboardPage() {
   }, [toast, fetchProjects, selectedProject, projects])
 
   const handleSyncFromConfig = React.useCallback(async () => {
+    if (!confirm('This will REPLACE all projects and environments with the contents of projects.config.json. Any unsaved changes will be lost. Continue?')) {
+      return
+    }
     try {
       const res = await fetch('/api/seed', { method: 'POST' })
       if (res.ok) {
@@ -2545,11 +2718,29 @@ export default function DashboardPage() {
 
   const handleDragEnd = React.useCallback((event: DragEndEvent) => {
     const { active, over } = event
-    if (over && active.id !== over.id) {
-      setProjects((prev) => {
-        const oldIndex = prev.findIndex((p) => p.id === active.id)
-        const newIndex = prev.findIndex((p) => p.id === over.id)
-        return arrayMove(prev, oldIndex, newIndex)
+    if (!over || active.id === over.id) return
+
+    let nextOrder: string[] = []
+    setProjects((prev) => {
+      const oldIndex = prev.findIndex((p) => p.id === active.id)
+      const newIndex = prev.findIndex((p) => p.id === over.id)
+      if (oldIndex < 0 || newIndex < 0) return prev
+      const moved = arrayMove(prev, oldIndex, newIndex)
+      nextOrder = moved.map((p) => p.id)
+      return moved
+    })
+
+    // Persist the new order to the server in the background.
+    // We don't block on it — visual order is updated immediately, and the
+    // next fetchProjects() call will fetch the canonical order from the DB.
+    if (nextOrder.length > 0) {
+      fetch('/api/projects/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: nextOrder.map((id) => ({ id })) }),
+      }).catch(() => {
+        // Silent failure — the next 5s auto-refresh will reflect server truth.
+        // The local state is already in the right order, so user sees no jitter.
       })
     }
   }, [])
@@ -2622,11 +2813,11 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-1">
+          {/* Actions: [utility group] [separator] [primary action] */}
+          <div className="flex items-center gap-1 ml-auto">
             {/* Notifications */}
             <Popover>
-              <PopoverTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground cursor-pointer relative transition-all duration-150 active:scale-95" />}>
+              <PopoverTrigger nativeButton render={<button type="button" className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground cursor-pointer relative transition-all duration-150 active:scale-95" />}>
                   <Bell className="h-4 w-4" />
                   {unreadNotifs > 0 && (
                     <motion.span key={unreadNotifs} initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 25 }} className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{unreadNotifs}</motion.span>
@@ -2696,7 +2887,7 @@ export default function DashboardPage() {
 
             <ThemeToggle />
 
-            {/* Settings dropdown: Gateway, LLM, Export */}
+            {/* Settings dropdown: Gateway, LLM, Export, Sync */}
             <DropdownMenu>
               <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-8 w-8 cursor-pointer hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground transition-colors" />}>
                 <Settings className="h-4 w-4" />
@@ -2709,6 +2900,10 @@ export default function DashboardPage() {
                   <Bot className="h-3.5 w-3.5 mr-2" />LLM Configuration
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSyncFromConfig}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-2" />Sync from config
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleExportCSV}>
                   <Download className="h-3.5 w-3.5 mr-2" />Export as CSV
                 </DropdownMenuItem>
@@ -2718,10 +2913,10 @@ export default function DashboardPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button variant="outline" onClick={handleSyncFromConfig} className="h-8 text-xs hidden sm:inline-flex">
-              <RefreshCw className="h-3.5 w-3.5 mr-1" />
-              <span className="hidden sm:inline">Sync</span>
-            </Button>
+            {/* Separator between utility group and primary action */}
+            <Separator orientation="vertical" className="h-5 mx-1.5" />
+
+            {/* Primary action */}
             <Button onClick={handleAddProject} className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs shadow-sm hover:shadow-md shadow-emerald-200/50 dark:shadow-emerald-900/30 hover:shadow-emerald-300/60 dark:hover:shadow-emerald-800/40 transition-all">
               <Plus className="h-3.5 w-3.5 mr-1" />
               <span className="hidden sm:inline">Add Project</span>
@@ -2732,109 +2927,122 @@ export default function DashboardPage() {
 
       {/* ======================== FILTER / STATUS BAR ======================== */}
       <div className="border-b bg-muted/30 dark:bg-zinc-900/80 dark:border-b dark:border-zinc-800/50">
-        <div className="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center gap-2">
-          {/* Stats */}
-          <div className="flex items-center gap-2 text-xs mr-4 dark:text-gray-300">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm transition-all cursor-default"><Folder className="h-3 w-3 text-emerald-600" />{loading && <Loader2 className="h-3 w-3 animate-spin text-emerald-500" />}<AnimatedCounter target={stats.total} /> projects</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm transition-all cursor-default hidden sm:inline-flex"><Play className="h-3 w-3 text-emerald-500" /><AnimatedCounter target={stats.running} /> running</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm transition-all cursor-default hidden sm:inline-flex"><Square className="h-3 w-3 text-red-400" /><AnimatedCounter target={stats.stopped} /> stopped</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm transition-all cursor-default hidden md:inline-flex"><Layers className="h-3 w-3 text-teal-500" /><AnimatedCounter target={stats.environments} /> envs</span>
+        <div className="max-w-7xl mx-auto px-4 py-2 space-y-2">
+          {/* Row 1: Stats + Updated timestamp */}
+          <div className="flex items-center gap-2 text-xs dark:text-gray-300">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm cursor-default">
+              <Folder className="h-3 w-3 text-emerald-600" />
+              {loading && <Loader2 className="h-3 w-3 animate-spin text-emerald-500" />}
+              <AnimatedCounter target={stats.total} /> projects
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm cursor-default">
+              <Play className="h-3 w-3 text-emerald-500" />
+              <AnimatedCounter target={stats.running} /> running
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm cursor-default hidden sm:inline-flex">
+              <Square className="h-3 w-3 text-red-400" />
+              <AnimatedCounter target={stats.stopped} /> stopped
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/60 dark:bg-white/5 border border-border/50 shadow-sm cursor-default hidden md:inline-flex">
+              <Layers className="h-3 w-3 text-teal-500" />
+              <AnimatedCounter target={stats.environments} /> envs
+            </span>
+            <span className="text-[9px] text-muted-foreground dark:text-zinc-500 tabular-nums ml-auto hidden sm:inline">
+              Updated {formatTimeAgo(lastRefreshed)}
+            </span>
           </div>
 
-          <Separator orientation="vertical" className="h-4" />
-
-          <span className="text-[9px] text-muted-foreground dark:text-zinc-500 tabular-nums hidden sm:inline">
-            Updated {formatTimeAgo(lastRefreshed)}
-          </span>
-
-          {/* Filter controls */}
-          <div className="flex items-center gap-2 flex-wrap overflow-x-auto max-w-full">
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted dark:hover:bg-white/10 hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors" />}>
+          {/* Row 2: Filters + Batch select (right-aligned) */}
+          <div className="flex items-center gap-2">
+            {/* Filter controls — wrap naturally, no horizontal scroll */}
+            <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted dark:hover:bg-white/10 hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors" />}>
                   <Filter className="h-3 w-3 mr-1" />
                   {filterStatus === 'all' ? 'Status' : filterStatus}
                 </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuRadioGroup value={filterStatus} onValueChange={(v) => setFilterStatus(v as FilterStatus)}>
-                  <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="running">Running</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="stopped">Stopped</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <DropdownMenuContent>
+                  <DropdownMenuRadioGroup value={filterStatus} onValueChange={(v) => setFilterStatus(v as FilterStatus)}>
+                    <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="running">Running</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="stopped">Stopped</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted dark:hover:bg-white/10 hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors" />}>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted dark:hover:bg-white/10 hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors" />}>
                   <Tag className="h-3 w-3 mr-1" />
                   Tags {filterTags.length > 0 && `(${filterTags.length})`}
                 </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {TAG_OPTIONS.map((tag) => (
-                  <DropdownMenuCheckboxItem
-                    key={tag.name}
-                    checked={filterTags.includes(tag.name)}
-                    onCheckedChange={(checked) => {
-                      setFilterTags((prev) => checked ? [...prev, tag.name] : prev.filter((t) => t !== tag.name))
-                    }}
-                  >
-                    {tag.name}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <DropdownMenuContent>
+                  {TAG_OPTIONS.map((tag) => (
+                    <DropdownMenuCheckboxItem
+                      key={tag.name}
+                      checked={filterTags.includes(tag.name)}
+                      onCheckedChange={(checked) => {
+                        setFilterTags((prev) => checked ? [...prev, tag.name] : prev.filter((t) => t !== tag.name))
+                      }}
+                    >
+                      {tag.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted dark:hover:bg-white/10 hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors" />}>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center rounded-md border border-border bg-background hover:bg-muted dark:hover:bg-white/10 hover:text-foreground h-7 px-2.5 text-xs font-medium cursor-pointer transition-colors" />}>
                   <ArrowUpDown className="h-3 w-3 mr-1" />
                   {sortBy === 'newest' ? 'Newest' : sortBy === 'name' ? 'Name' : 'Status'}
                 </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                  <DropdownMenuRadioItem value="newest">Newest First</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="name">By Name</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="status">By Status</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <DropdownMenuContent>
+                  <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                    <DropdownMenuRadioItem value="newest">Newest First</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="name">By Name</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="status">By Status</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            {/* Filter indicator pills */}
-            {filterStatus !== 'all' && (
-              <button type="button" onClick={() => setFilterStatus('all')} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition-colors">
-                {filterStatus} <X className="h-2.5 w-2.5" />
-              </button>
-            )}
-            {filterTags.length > 0 && filterTags.map(tag => (
-              <button key={tag} type="button" onClick={() => setFilterTags(prev => prev.filter(t => t !== tag))} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-900/60 transition-colors">
-                {tag} <X className="h-2.5 w-2.5" />
-              </button>
-            ))}
+              {/* Filter indicator pills */}
+              {filterStatus !== 'all' && (
+                <button type="button" onClick={() => setFilterStatus('all')} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition-colors">
+                  {filterStatus} <X className="h-2.5 w-2.5" />
+                </button>
+              )}
+              {filterTags.length > 0 && filterTags.map(tag => (
+                <button key={tag} type="button" onClick={() => setFilterTags(prev => prev.filter(t => t !== tag))} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-900/60 transition-colors">
+                  {tag} <X className="h-2.5 w-2.5" />
+                </button>
+              ))}
 
-            {/* Batch mode toggle */}
+              {/* Active filters breadcrumb — inline on same row */}
+              {activeFilters.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {activeFilters.map((f, i) => (
+                    <Badge key={i} variant="secondary" className="text-[10px] gap-1 pr-0.5">
+                      {f.label}
+                      <button onClick={f.onRemove} className="p-0.5 hover:bg-muted rounded"><X className="h-2.5 w-2.5" /></button>
+                    </Badge>
+                  ))}
+                  <Button variant="ghost" size="sm" className="h-5 text-[10px] text-muted-foreground" onClick={() => { setFilterStatus('all'); setFilterTags([]); setSearchQuery('') }}>
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Batch mode toggle — always right-aligned */}
             <Button
               variant={batchMode ? 'secondary' : 'outline'}
               size="icon"
-              className="h-7 w-7"
+              className="h-7 w-7 shrink-0"
               onClick={() => { setBatchMode(!batchMode); if (batchMode) setSelectedIds(new Set()) }}
               title="Batch select"
             >
               <Checkbox checked={batchMode} className="h-3 w-3" />
             </Button>
           </div>
-
-          {/* Active filters breadcrumb */}
-          {activeFilters.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap ml-auto">
-              {activeFilters.map((f, i) => (
-                <Badge key={i} variant="secondary" className="text-[10px] gap-1 pr-0.5">
-                  {f.label}
-                  <button onClick={f.onRemove} className="p-0.5 hover:bg-muted rounded"><X className="h-2.5 w-2.5" /></button>
-                </Badge>
-              ))}
-              <Button variant="ghost" size="sm" className="h-5 text-[10px] text-muted-foreground" onClick={() => { setFilterStatus('all'); setFilterTags([]); setSearchQuery('') }}>
-                Clear all
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -2945,6 +3153,7 @@ export default function DashboardPage() {
                       lanIp={lanIp}
                       currentHost={currentHost}
                       index={idx}
+                      batchMode={batchMode}
                     />
                   ))}
                 </div>
@@ -2969,6 +3178,7 @@ export default function DashboardPage() {
                       lanIp={lanIp}
                       currentHost={currentHost}
                       index={idx}
+                      batchMode={batchMode}
                     />
                   ))}
                 </div>
