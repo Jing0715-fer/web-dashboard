@@ -1,80 +1,5 @@
 import { NextResponse } from 'next/server'
-
-export async function GET() {
-  try {
-    // Mock gateway status with realistic data
-    const uptimeSeconds = Math.floor(Math.random() * 864000) + 3600 // 1-10 days
-    const systemUptimeSeconds = uptimeSeconds + Math.floor(Math.random() * 172800) // slightly longer
-    const memoryTotal = 16384 // 16GB
-    const memoryUsed = Math.floor(Math.random() * 8192) + 2048 // 2-10GB
-    const cpuUsage = Math.floor(Math.random() * 60) + 5 // 5-65%
-
-    const status = {
-      caddyRunning: true,
-      caddyVersion: '2.8.4',
-      gatewayPort: 3000,
-      gatewayListening: true,
-      configValid: true,
-      uptime: formatUptime(uptimeSeconds),
-      uptimeSeconds,
-      systemUptime: formatUptime(systemUptimeSeconds),
-      systemUptimeSeconds,
-      memoryUsage: {
-        total: memoryTotal,
-        used: memoryUsed,
-        free: memoryTotal - memoryUsed,
-        percentage: Math.round((memoryUsed / memoryTotal) * 100),
-      },
-      cpuUsage: {
-        percentage: cpuUsage,
-        cores: 4,
-        loadAverage: [cpuUsage / 25, cpuUsage / 25 - 0.2, cpuUsage / 25 - 0.4].map((v) =>
-          Math.max(0.1, Math.round(v * 100) / 100)
-        ),
-      },
-      services: [
-        {
-          name: 'nextjs-app',
-          status: 'running',
-          port: 3000,
-          pid: 1001,
-          uptime: formatUptime(uptimeSeconds),
-          memory: Math.floor(Math.random() * 512) + 128,
-        },
-        {
-          name: 'caddy-gateway',
-          status: 'running',
-          port: 80,
-          pid: 1002,
-          uptime: formatUptime(uptimeSeconds),
-          memory: Math.floor(Math.random() * 64) + 16,
-        },
-        {
-          name: 'prisma-engine',
-          status: 'running',
-          port: 0,
-          pid: 1003,
-          uptime: formatUptime(uptimeSeconds),
-          memory: Math.floor(Math.random() * 128) + 32,
-        },
-      ],
-      agentGateways: [
-        {
-          name: 'primary',
-          url: 'localhost:3000',
-          connected: true,
-          lastPing: new Date(Date.now() - 5000).toISOString(),
-        },
-      ],
-      lastChecked: new Date().toISOString(),
-    }
-
-    return NextResponse.json(status)
-  } catch (error) {
-    console.error('Failed to fetch gateway status:', error)
-    return NextResponse.json({ error: 'Failed to fetch gateway status' }, { status: 500 })
-  }
-}
+import os from 'os'
 
 function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400)
@@ -87,4 +12,64 @@ function formatUptime(seconds: number): string {
   parts.push(`${minutes}m`)
 
   return parts.join(' ')
+}
+
+export async function GET() {
+  try {
+    // Real system data
+    const totalMem = os.totalmem()
+    const freeMem = os.freemem()
+    const usedMem = totalMem - freeMem
+    const memPercentage = Math.round((usedMem / totalMem) * 100)
+
+    const cpus = os.cpus()
+    const cpuCount = cpus.length
+    // Calculate average CPU usage from load averages (1-min)
+    const loadAvg = os.loadavg()
+    // loadAvg[0] is 1-min average; convert to percentage (per core)
+    const cpuPercentage = Math.min(100, Math.round((loadAvg[0] / cpuCount) * 100))
+
+    const uptimeSeconds = Math.floor(os.uptime())
+
+    // Get process memory (this Next.js process)
+    const procMem = process.memoryUsage()
+    const procMemMB = Math.round(procMem.rss / 1024 / 1024)
+
+    const status = {
+      caddyRunning: true,
+      caddyVersion: '2.8.4',
+      gatewayPort: 3000,
+      gatewayListening: true,
+      configValid: true,
+      uptime: formatUptime(uptimeSeconds),
+      uptimeSeconds,
+      systemUptime: formatUptime(uptimeSeconds),
+      systemUptimeSeconds: uptimeSeconds,
+      memoryUsage: {
+        total: Math.round(totalMem / 1024 / 1024),       // MB
+        used: Math.round(usedMem / 1024 / 1024),          // MB
+        free: Math.round(freeMem / 1024 / 1024),          // MB
+        percentage: memPercentage,
+      },
+      cpuUsage: {
+        percentage: cpuPercentage,
+        cores: cpuCount,
+        loadAverage: loadAvg.map((v) => Math.round(v * 100) / 100),
+      },
+      processMemory: {
+        rss: procMemMB,
+        heapUsed: Math.round(procMem.heapUsed / 1024 / 1024),
+        heapTotal: Math.round(procMem.heapTotal / 1024 / 1024),
+      },
+      hostname: os.hostname(),
+      platform: os.platform(),
+      arch: os.arch(),
+      lastChecked: new Date().toISOString(),
+    }
+
+    return NextResponse.json(status)
+  } catch (error) {
+    console.error('Failed to fetch gateway status:', error)
+    return NextResponse.json({ error: 'Failed to fetch gateway status' }, { status: 500 })
+  }
 }

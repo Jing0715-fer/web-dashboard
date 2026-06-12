@@ -114,6 +114,7 @@ interface GatewayStatus {
   systemUptimeSeconds: number
   memoryUsage: { total: number; used: number; free: number; percentage: number }
   cpuUsage: { percentage: number; cores: number; loadAverage: number[] }
+  processMemory?: { rss: number; heapUsed: number; heapTotal: number }
   services: Array<{ name: string; status: string; port: number; pid: number; uptime: string; memory: number }>
   agentGateways: Array<{ name: string; url: string; connected: boolean; lastPing: string }>
   lastChecked: string
@@ -711,17 +712,17 @@ function SortableProjectCard({
             )}
             <DropdownMenu>
               <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent dark:hover:bg-white/10 cursor-pointer transition-colors" />}><MoreVertical className="h-3.5 w-3.5" /></DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(project)}><Edit3 className="h-3.5 w-3.5 mr-2" />Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSelect(project)}><Eye className="h-3.5 w-3.5 mr-2" />View Details</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="min-w-[180px] p-1.5 text-sm">
+                <DropdownMenuItem onClick={() => onEdit(project)} className="px-2.5 py-2 text-sm rounded-md"><Edit3 className="h-3.5 w-3.5 mr-2.5" />Edit Project</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onSelect(project)} className="px-2.5 py-2 text-sm rounded-md"><Eye className="h-3.5 w-3.5 mr-2.5" />View Details</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {project.environments.some((e) => e.status === 'running') && (
-                  <DropdownMenuItem onClick={() => { const port = project.environments.find((e) => e.status === 'running')?.port; if (port) navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${port}/`) }}><Link2 className="h-3.5 w-3.5 mr-2" />Copy Proxy URL</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { const port = project.environments.find((e) => e.status === 'running')?.port; if (port) navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${port}/`) }} className="px-2.5 py-2 text-sm rounded-md"><Link2 className="h-3.5 w-3.5 mr-2.5" />Copy Proxy URL</DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => { project.environments.forEach((env) => onEnvAction(project.id, env.id, 'restart')) }}><RotateCw className="h-3.5 w-3.5 mr-2" />Restart All</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onRebuildConfirm(project)}><Hammer className="h-3.5 w-3.5 mr-2" />Rebuild All</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { project.environments.forEach((env) => onEnvAction(project.id, env.id, 'restart')) }} className="px-2.5 py-2 text-sm rounded-md"><RotateCw className="h-3.5 w-3.5 mr-2.5" />Restart All</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onRebuildConfirm(project)} className="px-2.5 py-2 text-sm rounded-md"><Hammer className="h-3.5 w-3.5 mr-2.5" />Rebuild All</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={() => onDelete(project)}><Trash2 className="h-3.5 w-3.5 mr-2" />Delete</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive px-2.5 py-2 text-sm rounded-md" onClick={() => onDelete(project)}><Trash2 className="h-3.5 w-3.5 mr-2.5" />Delete</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -822,6 +823,13 @@ function SortableProjectCard({
                   {env.name !== 'development' && (
                     <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="hidden sm:inline-flex items-center justify-center rounded-md h-5 w-5 hover:bg-teal-50 dark:hover:bg-teal-900/20 cursor-pointer text-teal-500 dark:text-teal-400 transition-all active:scale-90 shrink-0" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'rebuild') }} title={`Rebuild ${envLabel(env.name)}`}><Hammer className="h-2.5 w-2.5" /></TooltipTrigger><TooltipContent>Rebuild {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
                   )}
+
+                  {/* Hermes Bridge toggle (only on Hermes Web dev env) */}
+                  {project.name === 'Hermes Web' && env.name === 'development' && (
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <HermesBridgeToggle />
+                    </span>
+                  )}
                   {/* Start/Stop at rightmost position */}
                   {env.status === 'running' ? (
                     <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-5 w-5 sm:h-5 sm:w-5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 cursor-pointer text-red-500 dark:text-red-400 transition-all active:scale-90 shrink-0 ring-1 ring-red-200 dark:ring-red-800/30" />} onClick={(e) => { e.stopPropagation(); onEnvAction(project.id, env.id, 'stop') }} title={`Stop ${envLabel(env.name)}`}><Square className="h-2.5 w-2.5 fill-current" /></TooltipTrigger><TooltipContent>Stop {envLabel(env.name)}</TooltipContent></Tooltip></TooltipProvider>
@@ -883,24 +891,18 @@ function SortableProjectCard({
                 <span className="text-[11px] hidden sm:inline whitespace-nowrap">Start All</span>
               </TooltipTrigger><TooltipContent>Start all stopped environments</TooltipContent></Tooltip></TooltipProvider>
             )}
-            {/* Hermes Bridge toggle (only on Hermes Web card, in the action bar) */}
-            {project.name === 'Hermes Web' && (
-              <span onClick={(e) => e.stopPropagation()}>
-                <HermesBridgeToggle />
-              </span>
-            )}
             <DropdownMenu>
               <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent dark:hover:bg-white/10 cursor-pointer transition-colors" />}><MoreVertical className="h-3.5 w-3.5" /></DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(project)}><Edit3 className="h-3.5 w-3.5 mr-2" />Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSelect(project)}><Eye className="h-3.5 w-3.5 mr-2" />View Details</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="min-w-[180px] p-1.5 text-sm">
+                <DropdownMenuItem onClick={() => onEdit(project)} className="px-2.5 py-2 text-sm rounded-md"><Edit3 className="h-3.5 w-3.5 mr-2.5" />Edit Project</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onSelect(project)} className="px-2.5 py-2 text-sm rounded-md"><Eye className="h-3.5 w-3.5 mr-2.5" />View Details</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {project.environments.some((e) => e.status === 'running') && (
-                  <DropdownMenuItem onClick={() => { const port = project.environments.find((e) => e.status === 'running')?.port; if (port) navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${port}/`) }}><Link2 className="h-3.5 w-3.5 mr-2" />Copy Proxy URL</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { const port = project.environments.find((e) => e.status === 'running')?.port; if (port) navigator.clipboard.writeText(`${window.location.origin}/api/proxy/${port}/`) }} className="px-2.5 py-2 text-sm rounded-md"><Link2 className="h-3.5 w-3.5 mr-2.5" />Copy Proxy URL</DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => { project.environments.forEach((env) => onEnvAction(project.id, env.id, 'restart')) }}><RotateCw className="h-3.5 w-3.5 mr-2" />Restart All</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onRebuildConfirm(project)}><Hammer className="h-3.5 w-3.5 mr-2" />Rebuild All</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive" onClick={() => onDelete(project)}><Trash2 className="h-3.5 w-3.5 mr-2" />Delete</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { project.environments.forEach((env) => onEnvAction(project.id, env.id, 'restart')) }} className="px-2.5 py-2 text-sm rounded-md"><RotateCw className="h-3.5 w-3.5 mr-2.5" />Restart All</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onRebuildConfirm(project)} className="px-2.5 py-2 text-sm rounded-md"><Hammer className="h-3.5 w-3.5 mr-2.5" />Rebuild All</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive px-2.5 py-2 text-sm rounded-md" onClick={() => onDelete(project)}><Trash2 className="h-3.5 w-3.5 mr-2.5" />Delete</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -2002,18 +2004,7 @@ function EnhancedFooter({ projects }: { projects: Project[] }) {
   const runningEnvs = projects.reduce((a, p) => a + (p.environments?.filter((e) => e.status === 'running').length || 0), 0)
 
   return (
-    <footer className="mt-auto border-t bg-muted/30 dark:bg-zinc-900/95 dark:border-t dark:border-zinc-800/60">
-      <div className="px-4 py-4 flex items-center justify-between text-xs text-foreground/80 dark:text-zinc-300">
-        <div className="flex items-center gap-6">
-          <span className="flex items-center gap-1"><CircleDot className={`h-2.5 w-2.5 ${runningEnvs > 0 ? 'text-emerald-500' : 'text-red-400'}`} /><span className="font-bold dark:text-zinc-200">{runningEnvs}/{totalEnvs}</span> running</span>
-          <span className="dark:text-zinc-300 font-medium">{projects.length} projects</span>
-        </div>
-        <button className="flex items-center gap-1.5 hover:text-foreground transition-colors px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 font-medium" onClick={() => setExpanded(!expanded)}>
-          <Monitor className="h-3.5 w-3.5" />
-          <span>System</span>
-          {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-        </button>
-      </div>
+    <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-background/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:bg-zinc-900/95 dark:border-t dark:border-zinc-800/60">
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -2022,29 +2013,40 @@ function EnhancedFooter({ projects }: { projects: Project[] }) {
             exit={{ height: 0 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-3 pt-1 grid grid-cols-2 md:grid-cols-4 gap-6 text-xs">
-              <div className="space-y-1">
-                <div className="font-semibold flex items-center gap-1 dark:text-zinc-200"><Cpu className="h-3 w-3 text-amber-500" />CPU</div>
+            <div className="px-4 pb-3 pt-2 grid grid-cols-2 md:grid-cols-4 gap-5 text-xs">
+              <div className="space-y-1.5">
+                <div className="font-semibold flex items-center gap-1.5 dark:text-zinc-200"><Cpu className="h-3.5 w-3.5 text-amber-500" />CPU</div>
                 <Progress value={gatewayStatus?.cpuUsage.percentage ?? 0} className="h-1.5" />
-                <div className="text-muted-foreground dark:text-zinc-400">{gatewayStatus?.cpuUsage.percentage ?? '—'}% &middot; {networkInfo?.cpus ?? '—'} cores</div>
+                <div className="text-muted-foreground dark:text-zinc-400 leading-relaxed">{gatewayStatus?.cpuUsage.percentage ?? '—'}%<br />{gatewayStatus?.cpuUsage.cores ?? networkInfo?.cpus ?? '—'} cores · load {gatewayStatus?.cpuUsage.loadAverage?.[0]?.toFixed(1) ?? '—'}</div>
               </div>
-              <div className="space-y-1">
-                <div className="font-semibold flex items-center gap-1 dark:text-zinc-200"><HardDrive className="h-3 w-3 text-teal-500" />Memory</div>
+              <div className="space-y-1.5">
+                <div className="font-semibold flex items-center gap-1.5 dark:text-zinc-200"><HardDrive className="h-3.5 w-3.5 text-teal-500" />Memory</div>
                 <Progress value={gatewayStatus?.memoryUsage.percentage ?? 0} className="h-1.5" />
-                <div className="text-muted-foreground dark:text-zinc-400">{gatewayStatus?.memoryUsage.used ?? '—'}MB / {gatewayStatus?.memoryUsage.total ?? '—'}MB</div>
+                <div className="text-muted-foreground dark:text-zinc-400 leading-relaxed">{gatewayStatus?.memoryUsage.used ?? '—'} / {gatewayStatus?.memoryUsage.total ?? '—'} MB<br />({gatewayStatus?.memoryUsage.percentage ?? '—'}%)</div>
               </div>
-              <div className="space-y-1">
-                <div className="font-semibold flex items-center gap-1 dark:text-zinc-200"><Server className="h-3 w-3 text-emerald-500" />Gateway</div>
-                <div className="text-muted-foreground dark:text-zinc-400">{gatewayStatus?.caddyRunning ? 'Running' : 'Stopped'} &middot; v{gatewayStatus?.caddyVersion ?? '—'}</div>
+              <div className="space-y-1.5">
+                <div className="font-semibold flex items-center gap-1.5 dark:text-zinc-200"><Server className="h-3.5 w-3.5 text-emerald-500" />Gateway</div>
+                <div className="text-muted-foreground dark:text-zinc-400 leading-relaxed">{gatewayStatus?.caddyRunning ? 'Running' : 'Stopped'}<br />v{gatewayStatus?.caddyVersion ?? '—'}</div>
               </div>
-              <div className="space-y-1">
-                <div className="font-semibold flex items-center gap-1 dark:text-zinc-200"><Clock className="h-3 w-3 text-cyan-500" />Uptime</div>
-                <div className="text-muted-foreground dark:text-zinc-400">{gatewayStatus?.uptime ?? '—'}</div>
+              <div className="space-y-1.5">
+                <div className="font-semibold flex items-center gap-1.5 dark:text-zinc-200"><Clock className="h-3.5 w-3.5 text-cyan-500" />Uptime</div>
+                <div className="text-muted-foreground dark:text-zinc-400 leading-relaxed">{gatewayStatus?.uptime ?? '—'}<br />RSS {gatewayStatus?.processMemory?.rss ?? '—'} MB</div>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+      <div className="px-4 py-3 flex items-center justify-between text-xs text-foreground/80 dark:text-zinc-300">
+        <div className="flex items-center gap-6">
+          <span className="flex items-center gap-1"><CircleDot className={`h-2.5 w-2.5 ${runningEnvs > 0 ? 'text-emerald-500' : 'text-red-400'}`} /><span className="font-bold dark:text-zinc-200">{runningEnvs}/{totalEnvs}</span> running</span>
+          <span className="dark:text-zinc-300 font-medium">{projects.length} projects</span>
+        </div>
+        <button className="flex items-center gap-1.5 hover:text-foreground transition-colors px-3 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 font-medium" onClick={() => setExpanded(!expanded)}>
+          <Monitor className="h-4 h-4" />
+          <span className="font-medium">System</span>
+          {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+        </button>
+      </div>
     </footer>
   )
 }
@@ -2875,23 +2877,23 @@ export default function DashboardPage() {
               <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-8 w-8 cursor-pointer hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground transition-colors" />}>
                 <Settings className="h-4 w-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setGatewayOpen(true)}>
-                  <Server className="h-3.5 w-3.5 mr-2" />Gateway Monitor
+              <DropdownMenuContent align="end" className="min-w-[200px] p-1.5 text-sm">
+                <DropdownMenuItem onClick={() => setGatewayOpen(true)} className="px-2.5 py-2 text-sm rounded-md">
+                  <Server className="h-3.5 w-3.5 mr-2.5" />Gateway Monitor
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLlmOpen(true)}>
-                  <Bot className="h-3.5 w-3.5 mr-2" />LLM Configuration
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSyncFromConfig}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-2" />Sync from config
+                <DropdownMenuItem onClick={() => setLlmOpen(true)} className="px-2.5 py-2 text-sm rounded-md">
+                  <Bot className="h-3.5 w-3.5 mr-2.5" />LLM Configuration
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <Download className="h-3.5 w-3.5 mr-2" />Export as CSV
+                <DropdownMenuItem onClick={handleSyncFromConfig} className="px-2.5 py-2 text-sm rounded-md">
+                  <RefreshCw className="h-3.5 w-3.5 mr-2.5" />Sync from config
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportJSON}>
-                  <Download className="h-3.5 w-3.5 mr-2" />Export as JSON
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportCSV} className="px-2.5 py-2 text-sm rounded-md">
+                  <Download className="h-3.5 w-3.5 mr-2.5" />Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportJSON} className="px-2.5 py-2 text-sm rounded-md">
+                  <Download className="h-3.5 w-3.5 mr-2.5" />Export as JSON
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -2936,7 +2938,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Row 2: Filters + Batch select (right-aligned) */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Filter controls — wrap naturally, no horizontal scroll */}
             <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
               <DropdownMenu>
@@ -3018,12 +3020,12 @@ export default function DashboardPage() {
             {/* Batch mode toggle — always right-aligned */}
             <Button
               variant={batchMode ? 'secondary' : 'outline'}
-              size="icon"
-              className="h-7 w-7 shrink-0"
+              className="h-7 px-2.5 text-xs font-medium gap-1.5 shrink-0 hover:text-foreground transition-colors"
               onClick={() => { setBatchMode(!batchMode); if (batchMode) setSelectedIds(new Set()) }}
               title="Batch select"
             >
               <Checkbox checked={batchMode} className="h-3 w-3" />
+              {batchMode ? 'Cancel' : 'Batch'}
             </Button>
           </div>
         </div>
@@ -3069,7 +3071,7 @@ export default function DashboardPage() {
       </AnimatePresence>
 
       {/* ======================== MAIN CONTENT ======================== */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-4">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-4 pb-20">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
         {loading ? (
           <LoadingSkeleton viewMode={viewMode} />
