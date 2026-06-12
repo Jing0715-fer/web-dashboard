@@ -2459,6 +2459,19 @@ export default function DashboardPage() {
       const res = await fetch(`/api/projects/${projectId}/environments/${envId}/${action}`, { method: 'POST' })
       if (res.ok) {
         toast({ title: `${actionLabels[action] ?? `${action}ed`} ${envLabel}`, variant: 'success' })
+
+        // Auto-start Hermes Bridge when Hermes Web dev/prod starts
+        if (action === 'start' && project?.name === 'Hermes Web') {
+          const bridgeProject = projects.find((p) => p.name === 'Hermes Bridge')
+          const bridgeEnv = bridgeProject?.environments?.[0]
+          if (bridgeProject && bridgeEnv && bridgeEnv.status !== 'running') {
+            try {
+              await fetch(`/api/projects/${bridgeProject.id}/environments/${bridgeEnv.id}/start`, { method: 'POST' })
+              toast({ title: 'Hermes Bridge auto-started', variant: 'success' })
+            } catch { /* best-effort */ }
+          }
+        }
+
         fetchProjects()
         // Refresh detail if open
         if (selectedProject?.id === projectId) {
