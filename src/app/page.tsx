@@ -683,7 +683,7 @@ function SortableProjectCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} onClick={() => onSelect(project)}>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -691,11 +691,10 @@ function SortableProjectCard({
         transition={{ delay: index * 0.05 }}
         whileHover={{ y: -3, boxShadow: '0 12px 32px rgba(0,0,0,0.15)' }}
         className={`group relative flex flex-col rounded-xl border bg-card dark:bg-zinc-900/80 shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:shadow-xl dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-all duration-200 cursor-pointer overflow-hidden border-border/60 dark:border-zinc-700/50 ${statusBorderAccent}`}
-        onClick={() => onSelect(project)}
       >
 
         <div className="absolute top-5 left-2 z-10 flex gap-1 items-start" onClick={(e) => e.stopPropagation()}>
-          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 rounded bg-muted/80 hover:bg-muted" title="Drag to reorder">
+          <div {...attributes} {...listeners} data-dnd-drag-handle className="cursor-grab active:cursor-grabbing p-1 rounded bg-muted/80 hover:bg-muted" title="Drag to reorder">
             <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           {batchMode && (
@@ -2675,10 +2674,7 @@ export default function DashboardPage() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        delay: 300,
-        tolerance: 10,
-      },
+      activationConstraint: { distance: 50 },
     }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
