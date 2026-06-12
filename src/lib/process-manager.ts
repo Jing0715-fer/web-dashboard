@@ -306,9 +306,18 @@ export async function startProcess(
     // These leak from the dashboard's own runtime (e.g. __NEXT_PRIVATE_STANDALONE_CONFIG
     // points at the dashboard's standalone dir) and confuse other Next.js apps
     // when they try to JSON.parse them as their own config.
+    //
+    // Also strip DATABASE_URL / DATABASE_* — these leak from the dashboard's own
+    // Prisma runtime and override the child project's own .env DATABASE_URL.
+    // For example: dashboard's DATABASE_URL points at web-dashboard/db/custom.db,
+    // so script-manager ends up querying dashboard's DB (no Script table → 500).
+    // The child project's own .env will provide its own DATABASE_URL on startup.
     const sanitizedParentEnv: Record<string, string | undefined> = {};
     for (const [k, v] of Object.entries(process.env)) {
       if (k.startsWith('__NEXT_PRIVATE_') || k === 'NEXT_DEPLOYMENT_ID' || k === '__NEXT_PROCESSED_ENV' || k === 'TURBOPACK') {
+        continue;
+      }
+      if (k === 'DATABASE_URL' || k.startsWith('DATABASE_')) {
         continue;
       }
       sanitizedParentEnv[k] = v as string | undefined;
