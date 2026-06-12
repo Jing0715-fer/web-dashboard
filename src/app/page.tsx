@@ -419,10 +419,13 @@ function DashboardClockWidget() {
 // "Hermes Bridge" project's bridge environment (port 3210). Status is
 // driven by the dashboard's existing 5s project refresh — the toggle is
 // purely a start/stop trigger.
+//
+// Kept intentionally minimal: a PlugZap icon + Switch, no backdrop blur,
+// no rounded-full pill, no "Bridge on" text. Tooltip carries the status.
 
 const HERMES_BRIDGE_NAME = 'Hermes Bridge'
 
-function HermesBridgeToggle({ compact = false }: { compact?: boolean }) {
+function HermesBridgeToggle() {
   const [busy, setBusy] = React.useState(false)
   const [localError, setLocalError] = React.useState<string | null>(null)
 
@@ -452,61 +455,35 @@ function HermesBridgeToggle({ compact = false }: { compact?: boolean }) {
     return null
   }
 
-  if (compact) {
-    return (
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 ${bridgeRunning ? 'bg-emerald-50/60 dark:bg-emerald-900/20' : 'hover:bg-muted/60 dark:hover:bg-white/5'}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {busy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-              ) : (
-                <PlugZap className={`h-3.5 w-3.5 ${bridgeRunning ? 'text-emerald-500' : 'text-muted-foreground'}`} />
-              )}
-              <Switch
-                checked={bridgeRunning}
-                onCheckedChange={handleToggle}
-                disabled={busy}
-                onClick={(e) => e.stopPropagation()}
-                className="scale-75 data-[state=checked]:bg-emerald-500"
-                aria-label="Hermes bridge"
-              />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            Hermes bridge · :3210 · {bridgeRunning ? 'running' : 'stopped'}
-            {localError ? ` · error: ${localError}` : ''}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-
   return (
-    <div
-      className={`absolute top-3 right-3 z-20 inline-flex items-center gap-2 rounded-full backdrop-blur px-2.5 py-1 ring-1 shadow-sm ${bridgeRunning ? 'bg-emerald-50/80 dark:bg-emerald-900/30 ring-emerald-200/60 dark:ring-emerald-700/40' : 'bg-background/80 dark:bg-zinc-900/80 ring-border/50'}`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {busy ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-      ) : (
-        <PlugZap className={`h-3.5 w-3.5 ${bridgeRunning ? 'text-emerald-500' : 'text-muted-foreground'}`} />
-      )}
-      <span className={`text-[10px] font-medium select-none ${bridgeRunning ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground dark:text-zinc-400'}`}>
-        Bridge{busy ? '…' : bridgeRunning ? ' on' : ''}
-      </span>
-      <Switch
-        checked={bridgeRunning}
-        onCheckedChange={handleToggle}
-        disabled={busy}
-        onClick={(e) => e.stopPropagation()}
-        className="scale-90 data-[state=checked]:bg-emerald-500"
-        aria-label="Hermes bridge"
-      />
-    </div>
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="inline-flex items-center gap-1 cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {busy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            ) : (
+              <PlugZap className={`h-3.5 w-3.5 ${bridgeRunning ? 'text-emerald-500' : 'text-muted-foreground'}`} />
+            )}
+            <Switch
+              checked={bridgeRunning}
+              onCheckedChange={handleToggle}
+              disabled={busy}
+              onClick={(e) => e.stopPropagation()}
+              className="scale-75 data-[state=checked]:bg-emerald-500"
+              aria-label="Hermes bridge"
+            />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">
+          Bridge :3210 · {bridgeRunning ? 'running' : 'stopped'}
+          {localError ? ` · error: ${localError}` : ''}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 
@@ -644,7 +621,7 @@ function SortableProjectCard({
           )}
           {project.name === 'Hermes Web' && (
             <span onClick={(e) => e.stopPropagation()}>
-              <HermesBridgeToggle compact />
+              <HermesBridgeToggle />
             </span>
           )}
           <button type="button" onClick={(e) => { e.stopPropagation(); onToggleStar(project.id) }} className={`shrink-0 cursor-pointer transition-colors hover:scale-110 active:scale-90 transition-transform duration-150 ${starred ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400'}`}>
@@ -774,10 +751,7 @@ function SortableProjectCard({
           )}
         </div>
 
-        {/* Hermes Bridge toggle (only on Hermes Web card) */}
-        {project.name === 'Hermes Web' && (
-          <HermesBridgeToggle />
-        )}
+        {/* Hermes Bridge toggle is rendered in the bottom action row, not the card top */}
 
         <CardHeader className="pb-3 pt-5 px-5 sm:px-6">
           <div className="flex items-start gap-2 min-w-0">
@@ -901,13 +875,19 @@ function SortableProjectCard({
             {project.environments.some((e) => e.status === 'running') ? (
               <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-lg h-7 px-2.5 border border-red-200 dark:border-red-800/50 bg-white dark:bg-zinc-800 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer gap-1.5 text-red-600 dark:text-red-400 transition-all hover:scale-105 active:scale-95 shadow-sm font-medium" />} onClick={() => { project.environments.filter((e) => e.status === 'running').forEach((env) => onEnvAction(project.id, env.id, 'stop')) }}>
                 <Square className="h-3 w-3 fill-current" />
-<span className="text-[11px] hidden sm:inline whitespace-nowrap">Stop All</span>
+                <span className="text-[11px] hidden sm:inline whitespace-nowrap">Stop All</span>
               </TooltipTrigger><TooltipContent>Stop all running environments</TooltipContent></Tooltip></TooltipProvider>
             ) : (
               <TooltipProvider><Tooltip><TooltipTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-lg h-7 px-2.5 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 cursor-pointer gap-1.5 text-white transition-all hover:scale-105 active:scale-95 shadow-sm font-medium" />} onClick={() => { project.environments.filter((e) => e.status !== 'running').forEach((env) => onEnvAction(project.id, env.id, 'start')) }}>
                 <Play className="h-3 w-3 fill-current" />
-<span className="text-[11px] hidden sm:inline whitespace-nowrap">Start All</span>
+                <span className="text-[11px] hidden sm:inline whitespace-nowrap">Start All</span>
               </TooltipTrigger><TooltipContent>Start all stopped environments</TooltipContent></Tooltip></TooltipProvider>
+            )}
+            {/* Hermes Bridge toggle (only on Hermes Web card, in the action bar) */}
+            {project.name === 'Hermes Web' && (
+              <span onClick={(e) => e.stopPropagation()}>
+                <HermesBridgeToggle />
+              </span>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger render={<button type="button" className="inline-flex items-center justify-center rounded-md h-7 w-7 hover:bg-accent dark:hover:bg-white/10 cursor-pointer transition-colors" />}><MoreVertical className="h-3.5 w-3.5" /></DropdownMenuTrigger>
@@ -2642,7 +2622,7 @@ export default function DashboardPage() {
         fetchProjects()
         if (selectedProject?.id === projectId) {
           const fresh = await (await fetch(`/api/projects/${projectId}`)).json()
-          setSelectedProject(fresh)
+          setSelectedProject(fresh?.project ?? fresh)
         }
       }
     } catch {
