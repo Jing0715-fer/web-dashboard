@@ -502,7 +502,7 @@ function HealthScoreHoverCard({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <PopoverTrigger nativeButton={true}>
         <div
           className="cursor-pointer"
           onMouseEnter={() => setOpen(true)}
@@ -2784,8 +2784,10 @@ function DetailSheet({
                           {tagDraft.length === 0 && <span className="text-xs text-muted-foreground italic">No tags selected</span>}
                         </div>
                         <Popover open={tagSearchOpen} onOpenChange={setTagSearchOpen}>
-                          <PopoverTrigger render={<Button variant="outline" size="sm" className="h-6 text-[10px] w-full justify-start" />}>
-                            <Tag className="h-2.5 w-2.5 mr-1" />Add tag...
+                          <PopoverTrigger nativeButton={true}>
+                            <Button variant="outline" size="sm" className="h-6 text-[10px] w-full justify-start">
+                              <Tag className="h-2.5 w-2.5 mr-1" />Add tag...
+                            </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-56 p-2" align="start">
                             <Input
@@ -5706,8 +5708,8 @@ export default function DashboardPage() {
           <div className="flex items-center gap-1 ml-auto">
             {/* Notifications */}
             <Popover>
-              <PopoverTrigger asChild>
-                <button type="button" className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground cursor-pointer relative transition-all duration-150 active:scale-95">
+              <PopoverTrigger nativeButton={true}>
+                <div className="inline-flex items-center justify-center rounded-md h-8 w-8 hover:bg-accent dark:hover:bg-white/10 hover:text-accent-foreground cursor-pointer relative transition-all duration-150 active:scale-95">
                   <Bell className={`h-4 w-4 ${unreadNotifs > 0 ? 'bell-shake' : ''}`} />
                   {unreadNotifs > 0 && (
                     <motion.span
@@ -5720,7 +5722,7 @@ export default function DashboardPage() {
                       {unreadNotifs > 99 ? '99+' : unreadNotifs}
                     </motion.span>
                   )}
-                </button>
+                </div>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-0">
                 <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
