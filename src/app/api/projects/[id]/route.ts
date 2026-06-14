@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { stopProcess, batchCheckPorts } from '@/lib/process-manager';
+import { isRemoteProject, proxyProjectAction } from '@/lib/route-decision';
 
 // GET /api/projects/[id]
 export async function GET(
@@ -11,14 +12,37 @@ export async function GET(
     const { id } = await params;
     const project = await db.project.findUnique({
       where: { id },
-      include: { environments: true },
+      include: { environments: true, device: true },
     });
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Batch check ports for efficiency
+    // Remote project → try proxy to agent, fallback to local data
+    if (isRemoteProject(project)) {
+      const result = await proxyProjectAction(
+        project.deviceId!,
+        `/projects/${id}`,
+        'GET'
+      );
+      if (result.ok) {
+        return NextResponse.json(result.data, { status: result.status });
+      }
+      // Agent unreachable → return local cached data with device info
+      const enriched = {
+        ...project,
+        deviceName: project.device?.name || 'Unknown Device',
+        deviceStatus: project.device?.status || 'offline',
+        environments: (project.environments || []).map((env) => ({
+          ...env,
+          status: env.status || 'stopped',
+        })),
+      };
+      return NextResponse.json({ project: enriched });
+    }
+
+    // Local project → existing logic
     const ports = project.environments.map(e => e.port);
     const activePorts = await batchCheckPorts(ports);
 
@@ -44,19 +68,35 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { name, description, icon } = body;
+    const { name, description, icon, tags } = body;
 
-    const existing = await db.project.findUnique({ where: { id } });
+    const existing = await db.project.findUnique({
+      where: { id },
+      include: { device: true },
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    // Remote project → proxy to agent
+    if (isRemoteProject(existing)) {
+      const result = await proxyProjectAction(
+        existing.deviceId!,
+        `/projects/${id}`,
+        'PUT',
+        body
+      );
+      return NextResponse.json(result.data, { status: result.status });
+    }
+
+    // Local project → existing logic
     const project = await db.project.update({
       where: { id },
       data: {
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
         ...(icon !== undefined && { icon }),
+        ...(tags !== undefined && { tags }),
       },
       include: { environments: true },
     });
@@ -75,16 +115,26 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Stop all running environments first
     const project = await db.project.findUnique({
       where: { id },
-      include: { environments: true },
+      include: { environments: true, device: true },
     });
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    // Remote project → proxy to agent
+    if (isRemoteProject(project)) {
+      const result = await proxyProjectAction(
+        project.deviceId!,
+        `/projects/${id}`,
+        'DELETE'
+      );
+      return NextResponse.json(result.data, { status: result.status });
+    }
+
+    // Local project → existing logic
     for (const env of project.environments) {
       await stopProcess(id, env.name, env.port);
     }

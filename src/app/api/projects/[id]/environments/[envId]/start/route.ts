@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { startProcess, checkPortStatus } from '@/lib/process-manager';
+import { isRemoteProject, proxyProjectAction } from '@/lib/route-decision';
 
 // Companion projects that should be auto-started when the parent project starts.
-// Key: parent project name (case-insensitive). Value: name of the companion
-// project to also start (will only start if it's currently stopped).
 const COMPANION_AUTO_START: Record<string, string> = {
   'hermes web': 'hermes bridge',
 };
@@ -28,6 +27,17 @@ export async function POST(
       return NextResponse.json({ error: 'Environment does not belong to this project' }, { status: 403 });
     }
 
+    // Remote project → proxy to agent
+    if (isRemoteProject(env.project)) {
+      const result = await proxyProjectAction(
+        env.project.deviceId!,
+        `/projects/${id}/environments/${envId}/start`,
+        'POST'
+      );
+      return NextResponse.json(result.data, { status: result.status });
+    }
+
+    // Local project → existing logic
     let envVars: Record<string, string> = {};
     try {
       envVars = JSON.parse(env.envVars);
@@ -107,4 +117,3 @@ export async function POST(
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
-

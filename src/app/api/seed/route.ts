@@ -107,7 +107,7 @@ export async function POST() {
   } catch (error) {
     console.error('Failed to seed database:', error)
     return NextResponse.json(
-      { error: 'Failed to seed database', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Failed to seed database' },
       { status: 500 }
     )
   }

@@ -77,67 +77,99 @@ const ACTIVITY_METADATA: Record<ActivityType, Record<string, unknown>> = {
   create: { template: 'default' },
 }
 
+// Seeded pseudo-random for deterministic per-project activity
+function seededRandom(seed: number) {
+  let s = seed
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff
+    return (s >>> 0) / 0xffffffff
+  }
+}
+
+function hashString(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash |= 0
+  }
+  return Math.abs(hash)
+}
+
 function generateActivityEvents(projectId: string): ActivityEvent[] {
   const types: ActivityType[] = ['deploy', 'start', 'stop', 'restart', 'rebuild', 'config_change', 'error', 'create']
   const events: ActivityEvent[] = []
   const now = Date.now()
+  const rng = seededRandom(hashString(projectId))
 
   // Generate 12-15 events
-  const count = 12 + Math.floor(Math.random() * 4)
+  const count = 12 + Math.floor(rng() * 4)
 
   for (let i = 0; i < count; i++) {
-    const type = types[Math.floor(Math.random() * types.length)]
+    const type = types[Math.floor(rng() * types.length)]
     const messages = ACTIVITY_MESSAGES[type]
-    const message = messages[Math.floor(Math.random() * messages.length)]
+    const message = messages[Math.floor(rng() * messages.length)]
     const metadata = { ...ACTIVITY_METADATA[type] }
 
-    // Add some randomness to metadata
     if (type === 'deploy') {
-      metadata.version = `2.${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 20)}`
+      metadata.version = `2.${Math.floor(rng() * 10)}.${Math.floor(rng() * 20)}`
     }
 
     events.push({
       id: `activity_${projectId}_${i}`,
       type,
       message,
-      timestamp: new Date(now - i * 1800000 - Math.random() * 600000).toISOString(),
+      timestamp: new Date(now - i * 1800000 - rng() * 600000).toISOString(),
       projectId,
       metadata,
     })
   }
 
-  return events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  return events
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET() {
   try {
-    const { id } = await params
-
-    const project = await db.project.findUnique({
-      where: { id },
+    const projects = await db.project.findMany({
       include: { device: true },
     })
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+
+    const allEvents: ActivityEvent[] = []
+
+    // Process projects in parallel — fetch remote activities and generate local ones
+    const results = await Promise.allSettled(
+      projects.map(async (project) => {
+        // Remote project → proxy to agent
+        if (isRemoteProject(project)) {
+          try {
+            const result = await proxyProjectAction(
+              project.deviceId!,
+              `/projects/${project.id}/activity`,
+              'GET'
+            )
+            return (result.data as ActivityEvent[]) || []
+          } catch {
+            return []
+          }
+        }
+
+        // Local project → generate activity
+        return generateActivityEvents(project.id)
+      })
+    )
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+        allEvents.push(...result.value)
+      }
     }
 
-    // Remote project → proxy to agent
-    if (isRemoteProject(project)) {
-      const result = await proxyProjectAction(
-        project.deviceId!,
-        `/projects/${id}/activity`,
-        'GET'
-      );
-      return NextResponse.json(result.data, { status: result.status });
-    }
+    // Sort by timestamp descending and limit to top 50
+    allEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-    const events = generateActivityEvents(id)
-    return NextResponse.json(events)
+    return NextResponse.json(allEvents.slice(0, 50))
   } catch (error) {
-    console.error('Failed to fetch activity:', error)
+    console.error('Failed to fetch aggregated activity:', error)
     return NextResponse.json({ error: 'Failed to fetch activity' }, { status: 500 })
   }
 }

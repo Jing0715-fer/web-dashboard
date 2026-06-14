@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { restartProcess } from '@/lib/process-manager';
+import { isRemoteProject, proxyProjectAction } from '@/lib/route-decision';
 
 export async function POST(
   _req: NextRequest,
@@ -21,6 +22,17 @@ export async function POST(
       return NextResponse.json({ error: 'Environment does not belong to this project' }, { status: 403 });
     }
 
+    // Remote project → proxy to agent
+    if (isRemoteProject(env.project)) {
+      const result = await proxyProjectAction(
+        env.project.deviceId!,
+        `/projects/${id}/environments/${envId}/restart`,
+        'POST'
+      );
+      return NextResponse.json(result.data, { status: result.status });
+    }
+
+    // Local project → existing logic
     let envVars: Record<string, string> = {};
     try {
       envVars = JSON.parse(env.envVars);

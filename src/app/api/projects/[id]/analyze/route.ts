@@ -3,9 +3,9 @@ import { db } from '@/lib/db';
 import { readProjectDir, checkPortStatus } from '@/lib/process-manager';
 
 // z-ai-web-dev-sdk is optional — only used when provider is 'zai'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 let ZAI: unknown;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   ZAI = require('z-ai-web-dev-sdk');
 } catch {
   // package not installed — zai provider will be unavailable

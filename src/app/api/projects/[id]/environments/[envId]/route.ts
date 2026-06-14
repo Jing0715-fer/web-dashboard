@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { stopProcess } from '@/lib/process-manager';
+import { isRemoteProject, proxyProjectAction } from '@/lib/route-decision';
 
 // PUT /api/projects/[id]/environments/[envId]
 export async function PUT(
@@ -10,8 +11,31 @@ export async function PUT(
   try {
     const { id, envId } = await params;
     const body = await req.json();
-    const { name, cmd, port, envVars } = body;
 
+    const existing = await db.environment.findUnique({
+      where: { id: envId },
+      include: { project: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Environment not found' }, { status: 404 });
+    }
+    if (existing.projectId !== id) {
+      return NextResponse.json({ error: 'Environment does not belong to this project' }, { status: 403 });
+    }
+
+    // Remote project → proxy to agent
+    if (isRemoteProject(existing.project)) {
+      const result = await proxyProjectAction(
+        existing.project.deviceId!,
+        `/projects/${id}/environments/${envId}`,
+        'PUT',
+        body
+      );
+      return NextResponse.json(result.data, { status: result.status });
+    }
+
+    // Local project → existing logic
+    const { name, cmd, port, envVars } = body;
     const portNum = port !== undefined ? parseInt(String(port), 10) : undefined;
     if (portNum !== undefined && (isNaN(portNum) || portNum < 1 || portNum > 65535)) {
       return NextResponse.json({ error: 'Port must be between 1 and 65535' }, { status: 400 });
@@ -30,14 +54,6 @@ export async function PUT(
           { status: 400 }
         );
       }
-    }
-
-    const existing = await db.environment.findUnique({ where: { id: envId } });
-    if (!existing) {
-      return NextResponse.json({ error: 'Environment not found' }, { status: 404 });
-    }
-    if (existing.projectId !== id) {
-      return NextResponse.json({ error: 'Environment does not belong to this project' }, { status: 403 });
     }
 
     const environment = await db.environment.update({
@@ -64,7 +80,10 @@ export async function DELETE(
   try {
     const { id, envId } = await params;
 
-    const existing = await db.environment.findUnique({ where: { id: envId } });
+    const existing = await db.environment.findUnique({
+      where: { id: envId },
+      include: { project: true },
+    });
     if (!existing) {
       return NextResponse.json({ error: 'Environment not found' }, { status: 404 });
     }
@@ -72,6 +91,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Environment does not belong to this project' }, { status: 403 });
     }
 
+    // Remote project → proxy to agent
+    if (isRemoteProject(existing.project)) {
+      const result = await proxyProjectAction(
+        existing.project.deviceId!,
+        `/projects/${id}/environments/${envId}`,
+        'DELETE'
+      );
+      return NextResponse.json(result.data, { status: result.status });
+    }
+
+    // Local project → existing logic
     // Stop the process if running
     await stopProcess(id, existing.name, existing.port);
 

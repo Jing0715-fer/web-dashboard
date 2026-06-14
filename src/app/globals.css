@@ -202,3 +202,328 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
   border-radius: 0.5rem !important;
 }
+
+/* Progress bar shimmer animation */
+@keyframes progress-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+[data-slot="progress-indicator"] {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-slot="progress-indicator"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: progress-shimmer 2s ease-in-out infinite;
+}
+
+/* Card ripple effect */
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.3; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+.card-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.15);
+  pointer-events: none;
+  animation: ripple 0.6s ease-out forwards;
+}
+
+/* Search input focus glow pulse */
+@keyframes search-glow {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(16,185,129,0.15), 0 0 12px rgba(16,185,129,0.1); }
+  50% { box-shadow: 0 0 0 3px rgba(16,185,129,0.25), 0 0 16px rgba(16,185,129,0.15); }
+}
+
+.search-focus-glow:focus-visible {
+  animation: search-glow 2s ease-in-out infinite;
+}
+
+/* Card shimmer on hover */
+@keyframes card-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.card-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(16, 185, 129, 0.06) 40%,
+    rgba(20, 184, 166, 0.1) 50%,
+    rgba(16, 185, 129, 0.06) 60%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.card-shimmer:hover::after {
+  animation: card-shimmer 0.8s ease-out;
+}
+
+.dark .card-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(16, 185, 129, 0.04) 40%,
+    rgba(20, 184, 166, 0.08) 50%,
+    rgba(16, 185, 129, 0.04) 60%,
+    transparent 100%
+  );
+}
+
+/* Notification badge pulse */
+@keyframes notif-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+.notif-badge-pulse {
+  animation: notif-badge-pulse 1.5s ease-in-out infinite;
+}
+
+/* Bell shake animation for unread notifications */
+@keyframes bell-shake {
+  0%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(10deg); }
+  20% { transform: rotate(-8deg); }
+  30% { transform: rotate(6deg); }
+  40% { transform: rotate(-4deg); }
+  50% { transform: rotate(2deg); }
+  60% { transform: rotate(0deg); }
+}
+
+.bell-shake {
+  animation: bell-shake 2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+/* Welcome widget gradient animation */
+@keyframes welcome-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.welcome-gradient-animate {
+  background-size: 200% 200%;
+  animation: welcome-gradient 6s ease infinite;
+}
+
+/* Scroll-to-top FAB */
+@keyframes fab-appear {
+  0% { transform: scale(0) translateY(20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.scroll-top-fab {
+  animation: fab-appear 0.3s ease-out forwards;
+}
+
+/* Quick launch bar pill hover glow */
+@keyframes quicklaunch-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(16,185,129,0.1); }
+  50% { box-shadow: 0 0 8px rgba(16,185,129,0.2); }
+}
+
+/* Activity feed slide in */
+@keyframes activity-slide {
+  0% { transform: translateX(-8px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* Custom scrollbar for dark mode */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.3);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.5);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Critical alert pulse */
+@keyframes alert-critical-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+.alert-critical-pulse {
+  animation: alert-critical-pulse 1.5s ease-in-out infinite;
+}
+
+/* Tab transition slide */
+@keyframes tab-slide-in {
+  0% { opacity: 0; transform: translateX(8px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.tab-slide-in {
+  animation: tab-slide-in 0.2s ease-out forwards;
+}
+
+/* Micro-interaction: scale on click */
+@keyframes btn-click-scale {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+.btn-micro-click:active {
+  animation: btn-click-scale 0.15s ease-out;
+}
+
+/* Status bounce */
+@keyframes status-bounce {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.2); }
+  70% { transform: scale(0.95); }
+}
+.status-bounce {
+  animation: status-bounce 0.4s ease-out;
+}
+
+/* Hover glow effect for interactive cards */
+.hover-glow {
+  transition: box-shadow 0.3s ease;
+}
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.15), 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+.dark .hover-glow:hover {
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.1), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Gradient section header */
+.gradient-section-header {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(20, 184, 166, 0.04) 100%);
+}
+.dark .gradient-section-header {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(20, 184, 166, 0.06) 100%);
+}
+
+/* Sparkline chart area */
+.sparkline-path {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Deployment timeline connector */
+.deployment-timeline-line {
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.05));
+}
+
+/* ======================== Session 15: Enhanced Animations ======================== */
+
+/* Skeleton shimmer block - pulsing with shimmer overlay */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+.skeleton-shimmer-block {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.15) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.dark .skeleton-shimmer-block::after {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.06) 50%, transparent 75%);
+  background-size: 200% 100%;
+}
+
+/* Skeleton card entrance */
+@keyframes skeleton-entrance {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.skeleton-card {
+  animation: skeleton-entrance 0.4s ease-out forwards;
+}
+
+/* Environment running badge - subtle pulse instead of aggressive animate-pulse */
+@keyframes env-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.env-running-badge {
+  animation: env-badge-pulse 2s ease-in-out infinite;
+}
+
+/* Health score circle smooth transition */
+@keyframes health-score-transition {
+  0% { stroke-dashoffset: var(--circumference); }
+}
+
+/* Card entrance stagger animation */
+@keyframes card-entrance {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.card-entrance {
+  animation: card-entrance 0.4s ease-out forwards;
+}
+
+/* Quick actions toolbar gradient animation */
+@keyframes toolbar-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Health trend arrow pop */
+@keyframes trend-pop {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.health-trend-icon {
+  animation: trend-pop 0.3s ease-out forwards;
+}
+
+/* Tag hover micro-animation scale */
+@keyframes tag-hover-scale {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}

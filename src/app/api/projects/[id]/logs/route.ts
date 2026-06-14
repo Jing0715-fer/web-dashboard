@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { isRemoteProject, proxyProjectAction } from '@/lib/route-decision'
 
 const LOG_LEVELS = ['info', 'warn', 'error', 'debug'] as const
 const LOG_SOURCES = ['server', 'build', 'runtime', 'network', 'database', 'auth', 'api'] as const
@@ -92,9 +93,22 @@ export async function GET(
   try {
     const { id } = await params
 
-    const project = await db.project.findUnique({ where: { id } })
+    const project = await db.project.findUnique({
+      where: { id },
+      include: { device: true },
+    })
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    }
+
+    // Remote project → proxy to agent
+    if (isRemoteProject(project)) {
+      const result = await proxyProjectAction(
+        project.deviceId!,
+        `/projects/${id}/logs`,
+        'GET'
+      );
+      return NextResponse.json(result.data, { status: result.status });
     }
 
     const logs = generateLogs(id)
