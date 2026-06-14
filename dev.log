@@ -1,0 +1,425 @@
+▲ Next.js 16.1.3
+- Local:         http://localhost:4000
+- Network:       http://0.0.0.0:4000
+
+✓ Starting...
+✓ Ready in 182ms
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.environment.deleteMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+Failed to seed database: Error [PrismaClientInitializationError]: 
+Invalid `prisma.environment.deleteMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at <unknown> (-->  schema.prisma:7)
+    at async C (.next/server/app/api/seed/route.js:1:2115)
+    at async k (.next/server/app/api/seed/route.js:1:5819)
+    at async j (.next/server/app/api/seed/route.js:1:6831) {
+  clientVersion: '6.19.2',
+  errorCode: undefined,
+  retryable: undefined
+}
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "sqlite"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+▲ Next.js 16.1.3
+- Local:         http://localhost:4000
+- Network:       http://0.0.0.0:4000
+
+✓ Starting...
+✓ Ready in 122ms
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.environment.deleteMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+Failed to seed database: Error [PrismaClientInitializationError]: 
+Invalid `prisma.environment.deleteMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+    at async C (.next/server/app/api/seed/route.js:1:2115)
+    at async k (.next/server/app/api/seed/route.js:1:5819)
+    at async j (.next/server/app/api/seed/route.js:1:6831) {
+  clientVersion: '6.19.2',
+  errorCode: undefined,
+  retryable: undefined
+}
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
+prisma:error 
+Invalid `prisma.project.findMany()` invocation:
+
+
+Error querying the database: Error code 14: Unable to open the database file
