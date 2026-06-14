@@ -45,3 +45,4 @@ db/*.db
 db/*.db.bak
 dev.log
 server.log
+db/custom.db
