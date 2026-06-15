@@ -9,10 +9,15 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Disable webpack cache to avoid stale build artifacts
   webpack: (config) => {
     config.cache = false;
     return config;
   },
+  // Empty turbopack config — silences the "webpack config with no
+  // turbopack config" warning in Next 16 dev mode (launchd's `next dev`
+  // was crashing on this conflict and entering a restart loop).
+  turbopack: {},
 };
 
 export default nextConfig;
