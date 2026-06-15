@@ -4376,6 +4376,7 @@ export default function DashboardPage() {
   const [addDeviceFormOpen, setAddDeviceFormOpen] = React.useState(false)
   const [editingDevice, setEditingDevice] = React.useState<Device | null>(null)
   const [agentDeployGuideOpen, setAgentDeployGuideOpen] = React.useState(false)
+  const [selectedPlatform, setSelectedPlatform] = React.useState<'windows' | 'macos' | 'linux'>('windows')
   const [moveProjectDialog, setMoveProjectDialog] = React.useState<Project | null>(null)
   // Session 11 states
   const [welcomeDismissed, setWelcomeDismissed] = React.useState<boolean>(() => {
@@ -7581,15 +7582,16 @@ export default function DashboardPage() {
               </h4>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { key: 'windows', label: 'Windows', icon: '🪟', desc: 'EXE Installer / Service', active: true },
-                  { key: 'macos', label: 'macOS', icon: '🍎', desc: 'Bun / Node.js', active: false },
-                  { key: 'linux', label: 'Linux', icon: '🐧', desc: 'Bun / Node.js', active: false },
+                  { key: 'windows' as const, label: 'Windows', icon: '🪟', desc: 'EXE Installer / Service' },
+                  { key: 'macos' as const, label: 'macOS', icon: '🍎', desc: 'DMG / Node.js' },
+                  { key: 'linux' as const, label: 'Linux', icon: '🐧', desc: 'Tarball / Node.js' },
                 ].map((p) => (
                   <button
                     key={p.key}
                     type="button"
+                    onClick={() => setSelectedPlatform(p.key)}
                     className={`rounded-lg border-2 p-3 text-left transition-all ${
-                      p.active
+                      selectedPlatform === p.key
                         ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-900/20 ring-1 ring-teal-500/30'
                         : 'border-muted hover:border-teal-300 dark:hover:border-teal-700'
                     }`}
@@ -7597,7 +7599,7 @@ export default function DashboardPage() {
                     <div className="text-lg mb-1">{p.icon}</div>
                     <div className="text-sm font-semibold">{p.label}</div>
                     <div className="text-[10px] text-muted-foreground">{p.desc}</div>
-                    {p.active && <Badge className="mt-1.5 text-[9px] bg-teal-600 text-white">Recommended</Badge>}
+                    {selectedPlatform === p.key && <Badge className="mt-1.5 text-[9px] bg-teal-600 text-white">Selected</Badge>}
                   </button>
                 ))}
               </div>
@@ -7605,53 +7607,102 @@ export default function DashboardPage() {
 
             <Separator />
 
-            {/* Quick Start - Windows */}
+            {/* Quick Start - Dynamic by platform */}
             <div className="space-y-3">
               <h4 className="text-sm font-semibold flex items-center gap-2">
                 <Zap className="h-4 w-4 text-amber-500" />
                 Quick Start (3 Steps)
               </h4>
 
-              {/* Step 1 */}
+              {/* Step 1: Download */}
               <div className="rounded-lg border bg-muted/20 dark:bg-zinc-800/20 p-4 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-teal-600 text-white text-[10px] font-bold shrink-0">1</span>
-                  <span className="text-sm font-medium">Download & Extract</span>
+                  <span className="text-sm font-medium">Download Agent</span>
                 </div>
                 <p className="text-xs text-muted-foreground pl-7">
-                  Download the <code className="px-1.5 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[11px] font-mono">dashboard-agent-windows.zip</code> package and extract it to your desired location.
+                  {selectedPlatform === 'windows' && (
+                    <>Download the <code className="px-1.5 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[11px] font-mono">dashboard-agent-windows.zip</code> package and extract it to your desired location.</>
+                  )}
+                  {selectedPlatform === 'macos' && (
+                    <>Download the <code className="px-1.5 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[11px] font-mono">dashboard-agent-macos.dmg</code> file. Open it and drag the app to your Applications folder.</>
+                  )}
+                  {selectedPlatform === 'linux' && (
+                    <>Download the <code className="px-1.5 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[11px] font-mono">dashboard-agent-linux.tar.gz</code> package and extract it: <code className="px-1.5 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[11px] font-mono">tar -xzf dashboard-agent-linux.tar.gz</code></>
+                  )}
                 </p>
                 <div className="pl-7">
                   <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={() => {
-                    window.open('/api/agent/download?platform=windows', '_blank')
-                    addToast({ title: 'Downloading Agent Package', description: 'dashboard-agent-windows.zip is being downloaded...', variant: 'success' })
+                    window.open(`/api/agent/download?platform=${selectedPlatform}`, '_blank')
+                    const fileNames: Record<string, string> = { windows: 'dashboard-agent-windows.zip', macos: 'dashboard-agent-macos.dmg', linux: 'dashboard-agent-linux.tar.gz' }
+                    const labels: Record<string, string> = { windows: 'ZIP', macos: 'DMG', linux: 'tar.gz' }
+                    addToast({ title: `Downloading Agent (${labels[selectedPlatform]})`, description: `${fileNames[selectedPlatform]} is being downloaded...`, variant: 'success' })
                   }}>
                     <Download className="h-3 w-3" />
-                    Download Agent Package
+                    Download Agent ({selectedPlatform === 'windows' ? 'ZIP' : selectedPlatform === 'macos' ? 'DMG' : 'tar.gz'})
                   </Button>
                 </div>
               </div>
 
-              {/* Step 2 */}
+              {/* Step 2: Install & Configure */}
               <div className="rounded-lg border bg-muted/20 dark:bg-zinc-800/20 p-4 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-teal-600 text-white text-[10px] font-bold shrink-0">2</span>
                   <span className="text-sm font-medium">Install & Configure</span>
                 </div>
-                <p className="text-xs text-muted-foreground pl-7">Run the setup wizard to install dependencies and configure the agent:</p>
-                <div className="pl-7 mt-1.5">
-                  <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
-                    <div className="text-emerald-400">:: Option A: Interactive Setup</div>
-                    <div className="text-zinc-300">node setup.js</div>
-                    <div className="text-zinc-500 mt-2">:: Option B: Quick Start</div>
-                    <div className="text-zinc-300">start.bat</div>
-                    <div className="text-zinc-500 mt-2">:: Option C: EXE Installer</div>
-                    <div className="text-zinc-300">dashboard-agent-setup.exe</div>
-                  </div>
-                </div>
+                {selectedPlatform === 'windows' && (
+                  <>
+                    <p className="text-xs text-muted-foreground pl-7">Run the setup wizard to install dependencies and configure the agent:</p>
+                    <div className="pl-7 mt-1.5">
+                      <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
+                        <div className="text-emerald-400">:: Option A: Interactive Setup</div>
+                        <div className="text-zinc-300">node setup.js</div>
+                        <div className="text-zinc-500 mt-2">:: Option B: Quick Start</div>
+                        <div className="text-zinc-300">start.bat</div>
+                        <div className="text-zinc-500 mt-2">:: Option C: EXE Installer</div>
+                        <div className="text-zinc-300">dashboard-agent-setup.exe</div>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {selectedPlatform === 'macos' && (
+                  <>
+                    <p className="text-xs text-muted-foreground pl-7">Open the DMG and run the setup wizard, or start directly:</p>
+                    <div className="pl-7 mt-1.5">
+                      <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
+                        <div className="text-emerald-400">:: Option A: Interactive Setup</div>
+                        <div className="text-zinc-300">cd dashboard-agent-macos && node setup.js</div>
+                        <div className="text-zinc-500 mt-2">:: Option B: Quick Start</div>
+                        <div className="text-zinc-300">cd dashboard-agent-macos && ./start.sh</div>
+                        <div className="text-zinc-500 mt-2">:: Option C: Install as LaunchAgent (auto-start)</div>
+                        <div className="text-zinc-300">cd dashboard-agent-macos && node setup.js</div>
+                        <div className="text-zinc-600 ml-4"># Choose 'y' when asked about LaunchAgent</div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 pl-7">💡 On first run, you may need to allow the app in System Preferences → Security & Privacy</p>
+                  </>
+                )}
+                {selectedPlatform === 'linux' && (
+                  <>
+                    <p className="text-xs text-muted-foreground pl-7">Extract the archive and run the setup wizard:</p>
+                    <div className="pl-7 mt-1.5">
+                      <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
+                        <div className="text-emerald-400">:: Extract</div>
+                        <div className="text-zinc-300">tar -xzf dashboard-agent-linux.tar.gz</div>
+                        <div className="text-zinc-500 mt-2">:: Option A: Interactive Setup</div>
+                        <div className="text-zinc-300">cd dashboard-agent-linux && node setup.js</div>
+                        <div className="text-zinc-500 mt-2">:: Option B: Quick Start</div>
+                        <div className="text-zinc-300">cd dashboard-agent-linux && node agent.js</div>
+                        <div className="text-zinc-500 mt-2">:: Option C: Systemd Service (auto-start)</div>
+                        <div className="text-zinc-300">sudo cp dashboard-agent.service /etc/systemd/system/</div>
+                        <div className="text-zinc-300">sudo systemctl enable --now dashboard-agent</div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Step 3 */}
+              {/* Step 3: Add Device */}
               <div className="rounded-lg border bg-muted/20 dark:bg-zinc-800/20 p-4 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-teal-600 text-white text-[10px] font-bold shrink-0">3</span>
@@ -7674,7 +7725,7 @@ export default function DashboardPage() {
 
             <Separator />
 
-            {/* Installation Methods */}
+            {/* Installation Methods — platform-specific */}
             <div className="space-y-3">
               <h4 className="text-sm font-semibold flex items-center gap-2">
                 <Layers className="h-4 w-4 text-violet-600" />
@@ -7688,53 +7739,332 @@ export default function DashboardPage() {
                     <div className="p-1 rounded bg-emerald-100 dark:bg-emerald-900/30">
                       <Terminal className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <span className="text-sm font-semibold">Simple (ZIP + start.bat)</span>
+                    <span className="text-sm font-semibold">
+                      {selectedPlatform === 'windows' ? 'Simple (ZIP + start.bat)' : selectedPlatform === 'macos' ? 'Simple (DMG + start.sh)' : 'Simple (tar.gz + node)'}
+                    </span>
                     <Badge variant="secondary" className="text-[9px] bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Easiest</Badge>
                   </div>
-                  <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
-                    <li>Install <a href="https://nodejs.org" target="_blank" rel="noopener" className="text-teal-600 dark:text-teal-400 underline underline-offset-2">Node.js 18+</a></li>
-                    <li>Download & extract the agent package</li>
-                    <li>Double-click <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">start.bat</code></li>
-                    <li>Copy the generated API Key</li>
-                  </ol>
+                  {selectedPlatform === 'windows' && (
+                    <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
+                      <li>Install <a href="https://nodejs.org" target="_blank" rel="noopener" className="text-teal-600 dark:text-teal-400 underline underline-offset-2">Node.js 18+</a></li>
+                      <li>Download & extract the agent package</li>
+                      <li>Double-click <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">start.bat</code></li>
+                      <li>Copy the generated API Key</li>
+                    </ol>
+                  )}
+                  {selectedPlatform === 'macos' && (
+                    <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
+                      <li>Install <a href="https://nodejs.org" target="_blank" rel="noopener" className="text-teal-600 dark:text-teal-400 underline underline-offset-2">Node.js 18+</a> (or use <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">brew install node</code>)</li>
+                      <li>Open the DMG and copy <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">dashboard-agent-macos</code> to your desired location</li>
+                      <li>Run <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">./start.sh</code> or <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">node agent.js</code></li>
+                      <li>Copy the generated API Key from the output</li>
+                    </ol>
+                  )}
+                  {selectedPlatform === 'linux' && (
+                    <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
+                      <li>Install <a href="https://nodejs.org" target="_blank" rel="noopener" className="text-teal-600 dark:text-teal-400 underline underline-offset-2">Node.js 18+</a></li>
+                      <li>Extract: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">tar -xzf dashboard-agent-linux.tar.gz</code></li>
+                      <li>Run <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">cd dashboard-agent-linux && node agent.js</code></li>
+                      <li>Copy the generated API Key from the output</li>
+                    </ol>
+                  )}
                 </div>
 
-                {/* Method 2: EXE Installer */}
-                <div className="rounded-lg border p-3.5 space-y-2 hover:shadow-sm transition-shadow">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 rounded bg-violet-100 dark:bg-violet-900/30">
-                      <Monitor className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                {/* Method 2: Professional / DMG / Package */}
+                {selectedPlatform === 'windows' && (
+                  <div className="rounded-lg border p-3.5 space-y-2 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded bg-violet-100 dark:bg-violet-900/30">
+                        <Monitor className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <span className="text-sm font-semibold">EXE Installer (Inno Setup)</span>
+                      <Badge variant="secondary" className="text-[9px] bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Professional</Badge>
                     </div>
-                    <span className="text-sm font-semibold">EXE Installer (Inno Setup)</span>
-                    <Badge variant="secondary" className="text-[9px] bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Professional</Badge>
+                    <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
+                      <li>Build the installer on a Windows machine: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">build-installer.bat</code></li>
+                      <li>Distribute <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">dashboard-agent-setup.exe</code></li>
+                      <li>Run the installer wizard on target device</li>
+                      <li>Configure port &amp; API Key during setup</li>
+                    </ol>
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 pl-6">⚠ Requires Inno Setup installed on build machine</p>
                   </div>
-                  <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
-                    <li>Build the installer on a Windows machine: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">build-installer.bat</code></li>
-                    <li>Distribute <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">dashboard-agent-setup.exe</code></li>
-                    <li>Run the installer wizard on target device</li>
-                    <li>Configure port &amp; API Key during setup</li>
-                  </ol>
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 pl-6">⚠ Requires Inno Setup installed on build machine</p>
-                </div>
+                )}
+                {selectedPlatform === 'macos' && (
+                  <div className="rounded-lg border p-3.5 space-y-2 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded bg-violet-100 dark:bg-violet-900/30">
+                        <Monitor className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <span className="text-sm font-semibold">DMG Package (create-dmg)</span>
+                      <Badge variant="secondary" className="text-[9px] bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Professional</Badge>
+                    </div>
+                    <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
+                      <li>Install create-dmg: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">brew install create-dmg</code></li>
+                      <li>Run the build script: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">./scripts/build-dmg.sh</code></li>
+                      <li>Distribute the generated <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">dist/dashboard-agent-macos.dmg</code></li>
+                      <li>Users simply open the DMG and drag to install</li>
+                    </ol>
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400 pl-6">💡 The DMG includes a LaunchAgent for auto-start on boot</p>
+                  </div>
+                )}
+                {selectedPlatform === 'linux' && (
+                  <div className="rounded-lg border p-3.5 space-y-2 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded bg-amber-100 dark:bg-amber-900/30">
+                        <Shield className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <span className="text-sm font-semibold">Systemd Service (Auto-start)</span>
+                      <Badge variant="secondary" className="text-[9px] bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Production</Badge>
+                    </div>
+                    <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
+                      <li>Extract the archive and enter the directory</li>
+                      <li>Copy the service file: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">sudo cp dashboard-agent.service /etc/systemd/system/</code></li>
+                      <li>Enable and start: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">sudo systemctl enable --now dashboard-agent</code></li>
+                      <li>Check status: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">sudo systemctl status dashboard-agent</code></li>
+                    </ol>
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 pl-6">⚠ Requires root privileges for systemd setup</p>
+                  </div>
+                )}
 
-                {/* Method 3: Windows Service */}
-                <div className="rounded-lg border p-3.5 space-y-2 hover:shadow-sm transition-shadow">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1 rounded bg-amber-100 dark:bg-amber-900/30">
-                      <Shield className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                {/* Method 3: Auto-start service */}
+                {selectedPlatform === 'windows' && (
+                  <div className="rounded-lg border p-3.5 space-y-2 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded bg-amber-100 dark:bg-amber-900/30">
+                        <Shield className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <span className="text-sm font-semibold">Windows Service (Auto-start)</span>
+                      <Badge variant="secondary" className="text-[9px] bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Production</Badge>
                     </div>
-                    <span className="text-sm font-semibold">Windows Service (Auto-start)</span>
-                    <Badge variant="secondary" className="text-[9px] bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Production</Badge>
+                    <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
+                      <li>Run PowerShell as Administrator</li>
+                      <li>Execute: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">.\install-service.ps1 -Port 3100</code></li>
+                      <li>Agent starts automatically with Windows</li>
+                      <li>Manage: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">Start-Service DashboardAgent</code></li>
+                    </ol>
                   </div>
-                  <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
-                    <li>Run PowerShell as Administrator</li>
-                    <li>Execute: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">.\install-service.ps1 -Port 3100</code></li>
-                    <li>Agent starts automatically with Windows</li>
-                    <li>Manage: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">Start-Service DashboardAgent</code></li>
-                  </ol>
-                </div>
+                )}
+                {selectedPlatform === 'macos' && (
+                  <div className="rounded-lg border p-3.5 space-y-2 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded bg-amber-100 dark:bg-amber-900/30">
+                        <Shield className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <span className="text-sm font-semibold">LaunchAgent (Auto-start)</span>
+                      <Badge variant="secondary" className="text-[9px] bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Production</Badge>
+                    </div>
+                    <ol className="text-xs text-muted-foreground space-y-1 pl-6 list-decimal">
+                      <li>Run the interactive setup: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">node setup.js</code></li>
+                      <li>Choose <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">y</code> when asked about LaunchAgent installation</li>
+                      <li>Or manually via API: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">POST /api/agent/start-service</code></li>
+                      <li>Manage: <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">launchctl load ~/Library/LaunchAgents/com.dashboard.agent.plist</code></li>
+                    </ol>
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400 pl-6">💡 LaunchAgent auto-starts the agent on system boot</p>
+                  </div>
+                )}
               </div>
             </div>
+
+            <Separator />
+
+            {/* Configuration — shared but with platform-specific notes */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <Settings className="h-4 w-4 text-zinc-500" />
+                Configuration
+              </h4>
+              <div className="rounded-lg border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left p-2.5 font-medium text-muted-foreground">Parameter</th>
+                      <th className="text-left p-2.5 font-medium text-muted-foreground">Default</th>
+                      <th className="text-left p-2.5 font-medium text-muted-foreground">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {[
+                      { param: '--port', default: '3100', desc: 'HTTP server port' },
+                      { param: '--apiKey', default: 'Auto-generated', desc: 'Authentication token for Dashboard' },
+                      { param: '--name', default: 'Hostname', desc: 'Agent display name' },
+                      ...(selectedPlatform === 'windows' ? [
+                        { param: '--install-service', default: '—', desc: 'Install as Windows Service (admin)' },
+                        { param: '--uninstall-service', default: '—', desc: 'Remove Windows Service (admin)' },
+                      ] : selectedPlatform === 'macos' ? [
+                        { param: '--install-service', default: '—', desc: 'Install as LaunchAgent (auto-start)' },
+                        { param: '--uninstall-service', default: '—', desc: 'Remove LaunchAgent' },
+                      ] : [
+                        { param: '--install-service', default: '—', desc: 'Install as systemd service (root)' },
+                        { param: '--uninstall-service', default: '—', desc: 'Remove systemd service (root)' },
+                      ]),
+                    ].map((row) => (
+                      <tr key={row.param} className="hover:bg-muted/20 transition-colors">
+                        <td className="p-2.5 font-mono text-teal-600 dark:text-teal-400">{row.param}</td>
+                        <td className="p-2.5 text-muted-foreground">{row.default}</td>
+                        <td className="p-2.5">{row.desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Firewall — platform-specific */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <Shield className="h-4 w-4 text-red-500" />
+                Firewall Configuration
+              </h4>
+              {selectedPlatform === 'windows' && (
+                <>
+                  <p className="text-xs text-muted-foreground">Open the Agent port in Windows Firewall to allow Dashboard connections:</p>
+                  <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
+                    <div className="text-zinc-500">:: Run as Administrator</div>
+                    <div className="text-zinc-300">netsh advfirewall firewall add rule name=&quot;Dashboard Agent&quot; dir=in action=allow protocol=TCP localport=3100</div>
+                  </div>
+                </>
+              )}
+              {selectedPlatform === 'macos' && (
+                <>
+                  <p className="text-xs text-muted-foreground">macOS Application Firewall may block incoming connections. To allow the agent:</p>
+                  <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
+                    <div className="text-zinc-500">:: Option A: Via System Preferences</div>
+                    <div className="text-zinc-600 ml-4">System Preferences → Security & Privacy → Firewall → Firewall Options → Allow incoming connections</div>
+                    <div className="text-emerald-400 mt-2">:: Option B: Via command line (disable firewall for the app)</div>
+                    <div className="text-zinc-300">sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add $(which node)</div>
+                    <div className="text-zinc-300">sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp $(which node)</div>
+                  </div>
+                  <p className="text-[10px] text-blue-600 dark:text-blue-400">💡 If using a pkg binary (built with <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[9px] font-mono">pkg</code>), you may need to codesign and notarize the binary for macOS Gatekeeper.</p>
+                </>
+              )}
+              {selectedPlatform === 'linux' && (
+                <>
+                  <p className="text-xs text-muted-foreground">Open the Agent port in your firewall to allow Dashboard connections:</p>
+                  <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
+                    <div className="text-emerald-400">:: UFW (Ubuntu / Debian)</div>
+                    <div className="text-zinc-300">sudo ufw allow 3100/tcp</div>
+                    <div className="text-zinc-300">sudo ufw reload</div>
+                    <div className="text-emerald-400 mt-2">:: firewalld (RHEL / CentOS / Fedora)</div>
+                    <div className="text-zinc-300">sudo firewall-cmd --permanent --add-port=3100/tcp</div>
+                    <div className="text-zinc-300">sudo firewall-cmd --reload</div>
+                    <div className="text-emerald-400 mt-2">:: iptables</div>
+                    <div className="text-zinc-300">sudo iptables -A INPUT -p tcp --dport 3100 -j ACCEPT</div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Package Contents — platform-specific */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <Folder className="h-4 w-4 text-sky-500" />
+                Package Contents
+              </h4>
+              {selectedPlatform === 'windows' && (
+                <div className="rounded-md bg-muted/30 dark:bg-zinc-800/30 p-3 font-mono text-xs space-y-0.5">
+                  <div className="text-zinc-500">📁 dashboard-agent-windows/</div>
+                  <div className="text-zinc-400 pl-4">📄 agent.js <span className="text-zinc-600 ml-2">— Main agent server</span></div>
+                  <div className="text-zinc-400 pl-4">📄 package.json <span className="text-zinc-600 ml-2">— Dependencies</span></div>
+                  <div className="text-zinc-400 pl-4">📄 setup.js <span className="text-zinc-600 ml-2">— Interactive setup wizard</span></div>
+                  <div className="text-zinc-400 pl-4">📄 start.bat <span className="text-zinc-600 ml-2">— Quick start script</span></div>
+                  <div className="text-zinc-400 pl-4">📄 install-service.ps1 <span className="text-zinc-600 ml-2">— Windows Service installer</span></div>
+                  <div className="text-zinc-400 pl-4">📄 uninstall-service.ps1 <span className="text-zinc-600 ml-2">— Service uninstaller</span></div>
+                  <div className="text-zinc-400 pl-4">📄 agent-installer.iss <span className="text-zinc-600 ml-2">— Inno Setup script</span></div>
+                  <div className="text-zinc-400 pl-4">📄 build-installer.bat <span className="text-zinc-600 ml-2">— Build EXE installer</span></div>
+                  <div className="text-zinc-400 pl-4">📁 prisma/ <span className="text-zinc-600 ml-2">— Database schema</span></div>
+                  <div className="text-zinc-400 pl-4">📄 .env.example <span className="text-zinc-600 ml-2">— Environment template</span></div>
+                  <div className="text-zinc-400 pl-4">📄 README.md <span className="text-zinc-600 ml-2">— Documentation</span></div>
+                </div>
+              )}
+              {selectedPlatform === 'macos' && (
+                <div className="rounded-md bg-muted/30 dark:bg-zinc-800/30 p-3 font-mono text-xs space-y-0.5">
+                  <div className="text-zinc-500">📁 dashboard-agent-macos/</div>
+                  <div className="text-zinc-400 pl-4">📄 agent.js <span className="text-zinc-600 ml-2">— Main agent server</span></div>
+                  <div className="text-zinc-400 pl-4">📄 package.json <span className="text-zinc-600 ml-2">— Dependencies</span></div>
+                  <div className="text-zinc-400 pl-4">📄 setup.js <span className="text-zinc-600 ml-2">— Interactive setup wizard</span></div>
+                  <div className="text-zinc-400 pl-4">📄 start.sh <span className="text-zinc-600 ml-2">— Quick start script (chmod +x)</span></div>
+                  <div className="text-zinc-400 pl-4">📁 prisma/ <span className="text-zinc-600 ml-2">— Database schema</span></div>
+                  <div className="text-zinc-400 pl-4">📄 .env.example <span className="text-zinc-600 ml-2">— Environment template</span></div>
+                  <div className="text-zinc-400 pl-4">📄 README.md <span className="text-zinc-600 ml-2">— Documentation</span></div>
+                  <div className="text-zinc-500 mt-2">📦 DMG (built via build-dmg.sh):</div>
+                  <div className="text-zinc-400 pl-4">💿 dashboard-agent-macos.dmg</div>
+                </div>
+              )}
+              {selectedPlatform === 'linux' && (
+                <div className="rounded-md bg-muted/30 dark:bg-zinc-800/30 p-3 font-mono text-xs space-y-0.5">
+                  <div className="text-zinc-500">📁 dashboard-agent-linux/</div>
+                  <div className="text-zinc-400 pl-4">📄 agent.js <span className="text-zinc-600 ml-2">— Main agent server</span></div>
+                  <div className="text-zinc-400 pl-4">📄 package.json <span className="text-zinc-600 ml-2">— Dependencies</span></div>
+                  <div className="text-zinc-400 pl-4">📄 setup.js <span className="text-zinc-600 ml-2">— Interactive setup wizard</span></div>
+                  <div className="text-zinc-400 pl-4">📄 dashboard-agent.service <span className="text-zinc-600 ml-2">— Systemd service file</span></div>
+                  <div className="text-zinc-400 pl-4">📁 prisma/ <span className="text-zinc-600 ml-2">— Database schema</span></div>
+                  <div className="text-zinc-400 pl-4">📄 .env.example <span className="text-zinc-600 ml-2">— Environment template</span></div>
+                  <div className="text-zinc-400 pl-4">📄 README.md <span className="text-zinc-600 ml-2">— Documentation</span></div>
+                  <div className="text-zinc-500 mt-2">📦 Archive:</div>
+                  <div className="text-zinc-400 pl-4">🗜 dashboard-agent-linux.tar.gz</div>
+                </div>
+              )}
+            </div>
+
+            {/* Build from source — platform-specific */}
+            {selectedPlatform === 'windows' && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Hammer className="h-4 w-4 text-orange-500" />
+                  Build Standalone EXE
+                </h4>
+                <p className="text-xs text-muted-foreground">Create a single-file executable using <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">pkg</code>:</p>
+                <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
+                  <div className="text-zinc-500">:: Install pkg globally</div>
+                  <div className="text-zinc-300">npm install -g pkg</div>
+                  <div className="text-zinc-500 mt-2">:: Build for Windows x64</div>
+                  <div className="text-zinc-300">npm run build:exe</div>
+                  <div className="text-zinc-500 mt-2">:: Output: dist/dashboard-agent.exe</div>
+                </div>
+                <p className="text-[10px] text-amber-600 dark:text-amber-400">⚠ Note: Prisma native binaries need to be bundled alongside the exe. Use the Inno Setup method for a complete installer.</p>
+              </div>
+            )}
+            {selectedPlatform === 'macos' && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Hammer className="h-4 w-4 text-orange-500" />
+                  Build DMG from Source
+                </h4>
+                <p className="text-xs text-muted-foreground">Build the macOS DMG installer on a macOS machine:</p>
+                <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
+                  <div className="text-zinc-500">:: 1. Build the agent package (auto-creates scaffold)</div>
+                  <div className="text-zinc-300">./scripts/build-dmg.sh</div>
+                  <div className="text-zinc-500 mt-2">:: 2. Output: dist/dashboard-agent-macos.dmg</div>
+                  <div className="text-zinc-500 mt-2">:: 3. For standalone binary (optional):</div>
+                  <div className="text-zinc-300">cd mini-services/agent-macos</div>
+                  <div className="text-zinc-300">npx pkg agent.js --targets node20-macos-x64 --output dashboard-agent</div>
+                  <div className="text-zinc-500 mt-2">:: 4. Codesign for Gatekeeper (optional):</div>
+                  <div className="text-zinc-300">codesign --sign "Developer ID Application" --force dashboard-agent</div>
+                </div>
+                <p className="text-[10px] text-blue-600 dark:text-blue-400">💡 DMG download is available from this dialog — click "Download Agent (DMG)" above</p>
+              </div>
+            )}
+            {selectedPlatform === 'linux' && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Hammer className="h-4 w-4 text-orange-500" />
+                  Build tar.gz from Source
+                </h4>
+                <p className="text-xs text-muted-foreground">Build the Linux tarball:</p>
+                <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
+                  <div className="text-zinc-500">:: The agent source is in mini-services/agent-linux/</div>
+                  <div className="text-zinc-300">cd mini-services/agent-linux</div>
+                  <div className="text-zinc-300">npm install --production</div>
+                  <div className="text-zinc-500 mt-2">:: Package (exclude dev files)</div>
+                  <div className="text-zinc-300">tar -czf ../dist/dashboard-agent-linux.tar.gz . \</div>
+                  <div className="text-zinc-300">  --exclude=node_modules --exclude=.git --exclude=*.log</div>
+                </div>
+              </div>
+            )}
 
             <Separator />
 
@@ -7790,49 +8120,11 @@ export default function DashboardPage() {
 
             <Separator />
 
-            {/* File Structure */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <Folder className="h-4 w-4 text-sky-500" />
-                Package Contents
-              </h4>
-              <div className="rounded-md bg-muted/30 dark:bg-zinc-800/30 p-3 font-mono text-xs space-y-0.5">
-                <div className="text-zinc-500">📁 dashboard-agent-windows/</div>
-                <div className="text-zinc-400 pl-4">📄 agent.js <span className="text-zinc-600 ml-2">— Main agent server</span></div>
-                <div className="text-zinc-400 pl-4">📄 package.json <span className="text-zinc-600 ml-2">— Dependencies</span></div>
-                <div className="text-zinc-400 pl-4">📄 setup.js <span className="text-zinc-600 ml-2">— Interactive setup wizard</span></div>
-                <div className="text-zinc-400 pl-4">📄 start.bat <span className="text-zinc-600 ml-2">— Quick start script</span></div>
-                <div className="text-zinc-400 pl-4">📄 install-service.ps1 <span className="text-zinc-600 ml-2">— Windows Service installer</span></div>
-                <div className="text-zinc-400 pl-4">📄 uninstall-service.ps1 <span className="text-zinc-600 ml-2">— Service uninstaller</span></div>
-                <div className="text-zinc-400 pl-4">📄 agent-installer.iss <span className="text-zinc-600 ml-2">— Inno Setup script</span></div>
-                <div className="text-zinc-400 pl-4">📄 build-installer.bat <span className="text-zinc-600 ml-2">— Build EXE installer</span></div>
-                <div className="text-zinc-400 pl-4">📁 prisma/ <span className="text-zinc-600 ml-2">— Database schema</span></div>
-                <div className="text-zinc-400 pl-4">📄 .env.example <span className="text-zinc-600 ml-2">— Environment template</span></div>
-                <div className="text-zinc-400 pl-4">📄 README.md <span className="text-zinc-600 ml-2">— Documentation</span></div>
-              </div>
-            </div>
-
-            {/* Building EXE from source */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <Hammer className="h-4 w-4 text-orange-500" />
-                Build Standalone EXE
-              </h4>
-              <p className="text-xs text-muted-foreground">Create a single-file executable using <code className="px-1 py-0.5 rounded bg-muted dark:bg-zinc-700 text-[10px] font-mono">pkg</code>:</p>
-              <div className="rounded-md bg-zinc-900 dark:bg-zinc-950 p-3 font-mono text-xs text-zinc-300 overflow-x-auto">
-                <div className="text-zinc-500">:: Install pkg globally</div>
-                <div className="text-zinc-300">npm install -g pkg</div>
-                <div className="text-zinc-500 mt-2">:: Build for Windows x64</div>
-                <div className="text-zinc-300">npm run build:exe</div>
-                <div className="text-zinc-500 mt-2">:: Output: dist/dashboard-agent.exe</div>
-              </div>
-              <p className="text-[10px] text-amber-600 dark:text-amber-400">⚠ Note: Prisma native binaries need to be bundled alongside the exe. Use the Inno Setup method for a complete installer.</p>
-            </div>
           </div>
 
           <DialogFooter className="shrink-0 border-t pt-3">
             <div className="flex items-center justify-between w-full">
-              <span className="text-[10px] text-muted-foreground">Package location: <code className="font-mono">mini-services/agent-windows/</code></span>
+              <span className="text-[10px] text-muted-foreground">Package location: <code className="font-mono">mini-services/agent-{selectedPlatform}/</code></span>
               <Button variant="outline" onClick={() => setAgentDeployGuideOpen(false)}>Close</Button>
             </div>
           </DialogFooter>
