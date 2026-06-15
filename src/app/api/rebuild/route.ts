@@ -10,7 +10,7 @@ const execAsync = promisify(exec);
 //   "Multiple bundler flags set: TURBOPACK=1, --webpack. Edit your command..."
 // because the dashboard itself runs under TURBOPACK and we inherit that env.
 function buildEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
-  const env: Record<string, string | undefined> = {};
+  const env: Record<string, string | undefined> = { NODE_ENV: process.env.NODE_ENV || 'production' };
   for (const [k, v] of Object.entries(process.env)) {
     if (k.startsWith('__NEXT_PRIVATE_')) continue;
     if (k === 'NEXT_DEPLOYMENT_ID') continue;
@@ -20,7 +20,7 @@ function buildEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
     if (v === undefined) continue;
     env[k] = v;
   }
-  return { ...env, ...extra };
+  return { ...env, ...extra } as NodeJS.ProcessEnv;
 }
 
 export async function POST() {

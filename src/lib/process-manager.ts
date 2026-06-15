@@ -325,6 +325,7 @@ export async function startProcess(
 
     const env: NodeJS.ProcessEnv = {
       ...sanitizedParentEnv,
+      NODE_ENV: sanitizedParentEnv.NODE_ENV || 'development',
       ...envVars,
       PORT: String(port),
       // Next.js / bun / node all check HOSTNAME; some also check HOST. Set both.

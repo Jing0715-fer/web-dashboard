@@ -475,7 +475,7 @@ function HealthScoreCircle({ score, size = 40 }: { score: number; size?: number 
         strokeWidth={strokeWidth}
         strokeDasharray={circumference}
         strokeDashoffset={circumference}
-        strokeLinecap="round"
+        strokeLinecap={safeScore === 0 ? 'butt' : 'round'}
         animate={{ strokeDashoffset: offset, stroke: healthStroke(safeScore) }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
       />
@@ -3510,7 +3510,7 @@ function DetailSheet({
                                     const next = [rollback, ...deployments]
                                     setDeployments(next)
                                     localStorage.setItem(`deployments-${project.id}`, JSON.stringify(next))
-                                    toast({ title: 'Rollback initiated', variant: 'warning' })
+                                    toast({ title: 'Rollback initiated', variant: 'default' })
                                   }}
                                 >
                                   <RotateCw className="h-2.5 w-2.5 mr-0.5" />Rollback
@@ -5225,7 +5225,7 @@ export default function DashboardPage() {
     const envLabel = env ? (env.name === 'development' ? 'dev' : env.name === 'production' ? 'prod' : env.name) : 'environment'
     // Block rebuild for dev environments — they use HMR
     if (action === 'rebuild' && env?.name === 'development') {
-      toast({ title: 'Dev environments use hot-reload', description: 'No rebuild needed — file changes are applied automatically via HMR', variant: 'info' })
+      toast({ title: 'Dev environments use hot-reload', description: 'No rebuild needed — file changes are applied automatically via HMR', variant: 'default' })
       return
     }
     const actionLabels: Record<string, string> = {
@@ -5313,14 +5313,14 @@ export default function DashboardPage() {
 
   const handleRebuildProject = React.useCallback(async (projectId: string) => {
     const project = projects.find((p) => p.id === projectId)
-    if (!project || envs.length === 0) return
+    if (!project || project.environments.length === 0) return
     setRebuildingProjectIds((prev) => new Set(prev).add(projectId))
     try {
       let successCount = 0
       // Skip dev environments — they use HMR and don't need rebuild
-      const rebuildEnvs = envs.filter((e) => e.name !== 'development')
+      const rebuildEnvs = project.environments.filter((e) => e.name !== 'development')
       if (rebuildEnvs.length === 0) {
-        toast({ title: 'No rebuildable environments', description: 'Dev environments use hot-reload and do not need rebuild', variant: 'info' })
+        toast({ title: 'No rebuildable environments', description: 'Dev environments use hot-reload and do not need rebuild', variant: 'default' })
         return
       }
       for (const env of rebuildEnvs) {

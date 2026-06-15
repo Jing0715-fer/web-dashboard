@@ -19,7 +19,7 @@ function randomElement<T>(arr: T[]): T {
 }
 
 function generateNotifications(
-  projects: Awaited<ReturnType<typeof db.project.findMany>>
+  projects: { id: string; name: string; environments: { id: string; name: string; port: number; status: string; pid: number | null }[] }[]
 ): Notification[] {
   const notifications: Notification[] = []
   let idCounter = 0

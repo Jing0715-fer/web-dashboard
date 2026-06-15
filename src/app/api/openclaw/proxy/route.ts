@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Proxy WebSocket connections to OpenClaw through the Dashboard
 // This avoids browser security restrictions on cross-origin WebSocket connections

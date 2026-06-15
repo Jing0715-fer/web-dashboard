@@ -176,9 +176,9 @@ export async function POST(request: Request) {
       const tags = inferTags(proj.name)
       const description = inferDescription(proj.name)
 
-      // Upsert: if project with same path exists, update it; otherwise create
+      // Upsert: if project with same (deviceId, path) exists, update it; otherwise create
       const upserted = await db.project.upsert({
-        where: { path: proj.path },
+        where: { deviceId_path: { deviceId: null, path: proj.path } },
         update: {
           name: displayName,
           description,
