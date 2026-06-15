@@ -475,7 +475,7 @@ function HealthScoreCircle({ score, size = 40 }: { score: number; size?: number 
         strokeWidth={strokeWidth}
         strokeDasharray={circumference}
         strokeDashoffset={circumference}
-        strokeLinecap={safeScore === 0 ? 'butt' : 'round'}
+        strokeLinecap="round"
         animate={{ strokeDashoffset: offset, stroke: healthStroke(safeScore) }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
       />
@@ -1077,7 +1077,7 @@ function SortableProjectCard({
             </div>
             <div className="flex items-center shrink-0">
               <div className="flex items-center gap-0.5">
-                <div onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, alignSelf: 'center' }} className={`cursor-pointer rounded-full transition-all hover:ring-2 hover:ring-emerald-300 dark:hover:ring-emerald-600 ${health < 50 ? 'animate-pulse ring-2 ring-red-400/50' : ''}`}>
+                <div onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, alignSelf: 'center' }} className="cursor-pointer rounded-full transition-all hover:ring-2 hover:ring-emerald-300 dark:hover:ring-emerald-600">
                   <HealthScoreHoverCard score={health} size={28} runningEnvs={runningEnvs} totalEnvs={totalEnvs} updatedAt={project.updatedAt} />
                 </div>
                 <HealthTrendIcon trend={healthTrend} />
